@@ -1,0 +1,8 @@
+node_modules/
+.next/
+dist/
+build/
+coverage/
+package-lock.json
+apps/api/drizzle/
+_bmad-output/

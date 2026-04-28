@@ -1,0 +1,9 @@
+{
+  "extends": ["../../tsconfig.base.json", "fastify-tsconfig"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"]
+}
