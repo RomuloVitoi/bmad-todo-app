@@ -1,5 +1,5 @@
 import type { CreateTodoRequest, Todo } from '@todo-app/shared';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { todos } from './schema.js';
@@ -37,4 +37,16 @@ export const createTodo = async (input: CreateTodoRequest): Promise<Todo> => {
     throw new Error('createTodo: insert returned no rows');
   }
   return toWire(row);
+};
+
+export const updateTodoCompleted = async (
+  id: string,
+  completed: boolean,
+): Promise<Todo | null> => {
+  const [row] = await db
+    .update(todos)
+    .set({ completed })
+    .where(eq(todos.id, id))
+    .returning();
+  return row ? toWire(row) : null;
 };

@@ -1,19 +1,30 @@
-import { CreateTodoRequestSchema, TodoListResponseSchema, TodoSchema } from '@todo-app/shared';
+import {
+  CreateTodoRequestSchema,
+  TodoListResponseSchema,
+  TodoSchema,
+  UpdateTodoRequestSchema,
+} from '@todo-app/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import {
   createTodo as defaultCreateTodo,
   listTodos as defaultListTodos,
+  updateTodoCompleted as defaultUpdateTodoCompleted,
 } from '../db/client.js';
+
+const TodoIdParamsSchema = z.object({ id: z.string().uuid() }).strict();
 
 export interface TodosRouteOptions {
   listTodos?: typeof defaultListTodos;
   createTodo?: typeof defaultCreateTodo;
+  updateTodoCompleted?: typeof defaultUpdateTodoCompleted;
 }
 
 const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => {
   const list = opts?.listTodos ?? defaultListTodos;
   const create = opts?.createTodo ?? defaultCreateTodo;
+  const updateCompleted = opts?.updateTodoCompleted ?? defaultUpdateTodoCompleted;
 
   app.withTypeProvider<ZodTypeProvider>().get(
     '/todos',
@@ -51,6 +62,28 @@ const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => 
     async (req, reply) => {
       const todo = await create(req.body);
       reply.code(201);
+      return todo;
+    },
+  );
+
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/todos/:id',
+    {
+      schema: {
+        tags: ['todos'],
+        summary: "Update a todo's completion state",
+        description:
+          'Sets `completed` on an existing todo. Body is validated against ' +
+          '`UpdateTodoRequestSchema` — `.strict()` rejects unknown fields with 400. ' +
+          'Concurrency semantics are last-write-wins; no `If-Match` or ETag is supported.',
+        params: TodoIdParamsSchema,
+        body: UpdateTodoRequestSchema,
+        response: { 200: TodoSchema },
+      },
+    },
+    async (req, reply) => {
+      const todo = await updateCompleted(req.params.id, req.body.completed);
+      if (!todo) return reply.notFound();
       return todo;
     },
   );

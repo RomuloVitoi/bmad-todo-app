@@ -251,3 +251,145 @@ test('POST /todos — round-trip: created todos appear in subsequent GET /todos 
   assert.equal(body.todos[0]!.completed, false);
   assert.equal(body.todos[1]!.completed, false);
 });
+
+test('PATCH /todos/:id — toggles false→true on an existing row (AC #1)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'walk dog' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { completed: true },
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as { id: string; text: string; completed: boolean };
+  assert.equal(body.id, id);
+  assert.equal(body.text, 'walk dog');
+  assert.equal(body.completed, true);
+
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todos = (list.json() as { todos: Array<{ id: string; completed: boolean }> }).todos;
+  assert.equal(todos.find((t) => t.id === id)?.completed, true);
+});
+
+test('PATCH /todos/:id — toggles true→false (AC #2)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'wake up' },
+  });
+  const { id } = created.json() as { id: string };
+  await app.inject({ method: 'PATCH', url: `/todos/${id}`, payload: { completed: true } });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { completed: false },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal((res.json() as { completed: boolean }).completed, false);
+});
+
+test('PATCH /todos/:id — same value twice is idempotent (AC #2)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'meditate' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const a = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { completed: true },
+  });
+  const b = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { completed: true },
+  });
+  assert.equal(a.statusCode, 200);
+  assert.equal(b.statusCode, 200);
+  assert.equal((b.json() as { completed: boolean }).completed, true);
+});
+
+test('PATCH /todos/:id — 404 on a valid-but-missing UUID (AC #3)', async () => {
+  const ghostId = '00000000-0000-4000-8000-000000000000';
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${ghostId}`,
+    payload: { completed: true },
+  });
+  assert.equal(res.statusCode, 404);
+  const body = res.json() as { statusCode: number; error: string; message: string };
+  assert.equal(body.statusCode, 404);
+  assert.equal(body.error, 'Not Found');
+  assert.equal(typeof body.message, 'string');
+});
+
+test('PATCH /todos/:id — 400 on a malformed UUID (AC #4)', async () => {
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/todos/not-a-uuid',
+    payload: { completed: true },
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test('PATCH /todos/:id — 400 on empty body, row unchanged (AC #5)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'breathe' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: {},
+  });
+  assert.equal(res.statusCode, 400);
+
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todo = (list.json() as { todos: Array<{ id: string; completed: boolean }> }).todos.find(
+    (t) => t.id === id,
+  );
+  assert.equal(todo?.completed, false);
+});
+
+test('PATCH /todos/:id — 400 on missing `completed` field (AC #5)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'stretch' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { something: 'else' },
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+test('PATCH /todos/:id — 400 on unknown field via `.strict()` (AC #5)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'eat lunch' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/todos/${id}`,
+    payload: { completed: true, text: 'oops' },
+  });
+  assert.equal(res.statusCode, 400);
+});
