@@ -2,6 +2,18 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 1-6 (2026-04-29)
+
+### Story 1.6 — apps/api /health + /docs (commit `e044afa`)
+
+- **`buildProductionTestApp` env mutation is parallel-test-hostile** — `apps/api/test/integration/helpers/buildTestApp.ts:152-180`. `process.env` is process-global; mutating in the build phase poisons concurrent reads in sibling tests until `onClose` restores. Within a single file `node:test` is sequential (safe today); cross-file parallel workers race. Defer to Story 1.11 if/when CI parallelization arrives.
+- **`HealthDegradedSchema.checks.db` is always `false` — useless field** — `apps/api/src/routes/health.ts:11-16`. Field shape is decorative until a second probe lands ("API up but cache/queue down"). AC #2 wording locks the current shape; defer reshape to whenever multi-probe arrives.
+- **`req.log.warn` throwing inside the 503 path is uncaught** — `apps/api/src/routes/health.ts:30`. Theoretical: Pino doesn't throw in normal operation. Defensive try/catch would be overkill for v1.
+- **`/health` 503 schema drift to 500 hazard** — `apps/api/src/routes/health.ts:18-29`. If a future contributor adds a redis/queue check to `HealthDegradedSchema` but not the handler payload, Zod's `.strict()` would cause the response serializer to throw → setErrorHandler → 500. Add a "schema parity test" if/when extending.
+- **No test asserts `/health` is rate-limited / behind helmet / CORS** — `apps/api/test/integration/health.int.test.ts`. Story 1.5 deferred-work item AC #3 (rate-limit envelope direct test) covers this turf; adding a `/health`-specific case duplicates that work.
+- **`/docs/` HTML test brittle to swagger-ui upgrades** — `apps/api/test/integration/docs.int.test.ts:46-50`. Permissive `text\/html` regex is fine today; future swagger-ui changes (charset negotiation, redirect-target rename) could mask a regression.
+- **Pool teardown idempotency masks the deeper architectural concern** — `apps/api/src/plugins/db.ts:23-30`. Even after the message-substring → flag refactor (Story 1.6 patch), the real issue is module-singleton pool ownership. Per-instance pool factory or lazy initialization is the architectural fix. Story 1.11 deployment-hardening is the natural place.
+
 ## Deferred from: code review of story 1-5 (2026-04-29)
 
 ### Story 1.5 — apps/api GET /todos + plugin stack (commit `727cbad`)

@@ -1,6 +1,16 @@
 import fp from 'fastify-plugin';
 import { db, pool } from '../db/client.js';
 
+// Module-scoped flag that tracks whether the singleton pg pool has been ended
+// by ANY Fastify instance built in this process. Multiple `buildApp()` calls
+// (test workers, hot-reload) share the singleton; a second `pool.end()` on an
+// already-ended pool throws — guarded here so multi-instance teardown is
+// idempotent. Resilient to upstream pg-pool error-message changes (the prior
+// substring-match approach was fragile).
+// Architectural fix (per-instance pool factory) is the long-term solution —
+// see deferred-work.md "Pool teardown idempotency masks the deeper architectural concern".
+let poolEnded = false;
+
 export default fp(
   async (app) => {
     app.decorate('db', db);
@@ -14,20 +24,11 @@ export default fp(
 
     // Detach + close on Fastify shutdown so re-builds in the same process
     // (test workers, hot-reload) don't accumulate listeners on the singleton pool.
-    // pool.end() throws "Called end on pool more than once" if a sibling
-    // Fastify instance has already torn down the module-singleton pool —
-    // swallow that specific case so multi-instance teardown is idempotent.
-    // (Story 1.5 deferred-work item; surfaced in Story 1.6 test infrastructure.)
     app.addHook('onClose', async () => {
       pool.off('error', onPoolError);
-      try {
-        await pool.end();
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('end on pool more than once')) {
-          return;
-        }
-        throw err;
-      }
+      if (poolEnded) return;
+      poolEnded = true;
+      await pool.end();
     });
   },
   { name: 'db', dependencies: ['@fastify/env'] },

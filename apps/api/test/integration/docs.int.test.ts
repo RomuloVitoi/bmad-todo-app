@@ -60,6 +60,17 @@ test('AC #4: GET /docs returns 404 in production without ENABLE_DOCS', async () 
     assert.equal(res.statusCode, 404);
     const jsonRes = await prodApp.inject({ method: 'GET', url: '/docs/json' });
     assert.equal(jsonRes.statusCode, 404);
+
+    // Body must NOT leak schema details through fastify-sensible's 404 envelope.
+    // Either response is allowed to be the standard `{ statusCode, error, message }`
+    // 404 shape, but it must contain no OpenAPI document keys.
+    const docsBody = res.json() as Record<string, unknown>;
+    const jsonBody = jsonRes.json() as Record<string, unknown>;
+    for (const body of [docsBody, jsonBody]) {
+      assert.ok(!('openapi' in body), '404 body must not contain `openapi` key');
+      assert.ok(!('paths' in body), '404 body must not contain `paths` key');
+      assert.ok(!('components' in body), '404 body must not contain `components` key');
+    }
   } finally {
     await prodApp.close();
   }

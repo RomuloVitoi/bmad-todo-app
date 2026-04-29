@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
-import {
-  serializerCompiler,
-  validatorCompiler,
-} from 'fastify-type-provider-zod';
 import { buildApp } from '../../../src/app.js';
 import healthRoutes from '../../../src/routes/health.js';
 
@@ -79,7 +75,15 @@ function makeFastifyOptions(lines: Array<Record<string, unknown>>): FastifyOptio
   };
 }
 
-export async function buildTestApp(): Promise<FastifyInstance> {
+export interface BuildTestAppOptions {
+  // Mounts a SECOND `healthRoutes` plugin under `/internal-test` with a
+  // throwing probe — exercises AC #2 (503 degraded path) inside the FULL
+  // production plugin stack, instead of a parallel minimal app. Tests assert
+  // against `GET /internal-test/health`.
+  failingHealthProbe?: boolean;
+}
+
+export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<FastifyInstance> {
   const lines: Array<Record<string, unknown>> = [];
   const app = Fastify(makeFastifyOptions(lines));
 
@@ -93,26 +97,18 @@ export async function buildTestApp(): Promise<FastifyInstance> {
     throw new Error('intentional test failure');
   });
 
-  await app.ready();
-  buffers.set(app, lines);
-  return app;
-}
-
-// Story 1.6 AC #2: 503 degraded path. Produces a minimal app with ONLY the
-// healthRoutes plugin and a probe stub that throws — bypasses the production
-// /health route's real DB probe so the failure mode is deterministic. Logger
-// config matches buildTestApp() so AC's "warn-level log" assertion works.
-export async function buildFailingHealthApp(): Promise<FastifyInstance> {
-  const lines: Array<Record<string, unknown>> = [];
-  const app = Fastify(makeFastifyOptions(lines));
-
-  app.setValidatorCompiler(validatorCompiler);
-  app.setSerializerCompiler(serializerCompiler);
-  await app.register(healthRoutes, {
-    probe: async () => {
-      throw new Error('synthetic db failure');
-    },
-  });
+  // Story 1.6 AC #2 (503 degraded path) coverage inside the full prod stack.
+  // Mounting the failing variant under a different prefix avoids clashing with
+  // the production /health route (registered by buildApp). The plugin's route
+  // handler logic is identical for both — only the injected probe differs.
+  if (opts.failingHealthProbe) {
+    await app.register(healthRoutes, {
+      prefix: '/internal-test',
+      probe: async () => {
+        throw new Error('synthetic db failure');
+      },
+    });
+  }
 
   await app.ready();
   buffers.set(app, lines);
@@ -129,19 +125,24 @@ export async function buildProductionTestApp(): Promise<FastifyInstance> {
   process.env.NODE_ENV = 'production';
   delete process.env.ENABLE_DOCS;
 
+  const restoreEnv = (): void => {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalEnableDocs === undefined) delete process.env.ENABLE_DOCS;
+    else process.env.ENABLE_DOCS = originalEnableDocs;
+  };
+
+  let app: FastifyInstance | undefined;
   try {
     const lines: Array<Record<string, unknown>> = [];
-    const app = Fastify(makeFastifyOptions(lines));
+    app = Fastify(makeFastifyOptions(lines));
     await buildApp(app);
 
     // Restore env on close so subsequent tests see the original values.
     // Hook MUST be registered before app.ready() — Fastify forbids
     // addHook after the instance has started.
     app.addHook('onClose', async () => {
-      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-      else process.env.NODE_ENV = originalNodeEnv;
-      if (originalEnableDocs === undefined) delete process.env.ENABLE_DOCS;
-      else process.env.ENABLE_DOCS = originalEnableDocs;
+      restoreEnv();
     });
 
     await app.ready();
@@ -149,11 +150,15 @@ export async function buildProductionTestApp(): Promise<FastifyInstance> {
 
     return app;
   } catch (err) {
-    // If buildApp fails, restore env immediately so we don't poison the test process.
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = originalNodeEnv;
-    if (originalEnableDocs === undefined) delete process.env.ENABLE_DOCS;
-    else process.env.ENABLE_DOCS = originalEnableDocs;
+    // Close partially-built app so listeners (esp. pool.on('error', ...))
+    // and Fastify-internal resources don't leak. swallow nested errors —
+    // surfacing the original `err` is more useful than the close failure.
+    if (app) {
+      await app.close().catch(() => {
+        /* close-on-build-failure best-effort */
+      });
+    }
+    restoreEnv();
     throw err;
   }
 }

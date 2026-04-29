@@ -13,7 +13,11 @@ export const envSchema = {
     NODE_ENV: { type: 'string', default: 'development' },
     // String enum (not boolean) — Ajv would silently coerce any non-empty
     // string to true. Coerce at the call site (`=== 'true'`).
-    ENABLE_DOCS: { type: 'string', enum: ['true', 'false'], default: 'false' },
+    // Empty string accepted because operators commonly write `ENABLE_DOCS=`
+    // in .env files to "unset" without realizing Ajv's `default` only fires
+    // on missing keys. Empty falls through the call-site `=== 'true'` check
+    // to false, matching operator intent.
+    ENABLE_DOCS: { type: 'string', enum: ['true', 'false', ''], default: 'false' },
   },
 } as const;
 
