@@ -8,13 +8,25 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "dev": "bash scripts/dev.sh",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "test": "npm-run-all --print-label test:*",
+    "test:shared": "npm --workspace packages/shared run test",
+    "test:api": "npm --workspace apps/api run test:unit",
+    "test:web": "npm --workspace apps/web run test",
+    "typecheck": "npm-run-all --print-label typecheck:*",
+    "typecheck:shared": "npm --workspace packages/shared exec -- tsc --noEmit",
+    "typecheck:api": "npm --workspace apps/api exec -- tsc --noEmit",
+    "typecheck:web": "npm --workspace apps/web exec -- tsc --noEmit"
   },
   "devDependencies": {
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "^2.31.0",
+    "npm-run-all2": "^8.0.0",
     "prettier": "^3.8.3",
     "typescript-eslint": "^8.59.1"
   },
