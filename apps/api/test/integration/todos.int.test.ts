@@ -291,7 +291,10 @@ test('PATCH /todos/:id — toggles true→false (AC #2)', async () => {
     payload: { completed: false },
   });
   assert.equal(res.statusCode, 200);
-  assert.equal((res.json() as { completed: boolean }).completed, false);
+  const body = res.json() as { id: string; text: string; completed: boolean };
+  assert.equal(body.id, id);
+  assert.equal(body.text, 'wake up');
+  assert.equal(body.completed, false);
 });
 
 test('PATCH /todos/:id — same value twice is idempotent (AC #2)', async () => {

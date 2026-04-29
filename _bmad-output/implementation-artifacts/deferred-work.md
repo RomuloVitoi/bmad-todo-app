@@ -2,6 +2,17 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-2 (2026-04-29)
+
+### Story 2.2 — PATCH /todos/:id with LWW semantics (commits `ab93e19..32eec9c`)
+
+- **`--test-concurrency=1` masks a structural cross-file isolation problem** — [apps/api/package.json:13](../../apps/api/package.json#L13). The fix works for now but treats a symptom: cross-file `beforeEach(resetTodos)` is unsound for the architecture's pre-named test files (`todos`, `validation`, `concurrency` per [architecture.md:597](../../_bmad-output/planning-artifacts/architecture.md#L597)). Story 2.3 DELETE concurrency and any future per-file integration test will inherit the forced serial execution. Hardening options: (a) per-file schema namespace, (b) transactional rollback per test, (c) move `concurrency.int.test.ts` outside the shared `beforeEach(resetTodos)` lifecycle. Revisit before CI sharding or before Story 2.3 lands a second concurrency test.
+- **`Promise.all` may not actually demonstrate LWW non-determinism** — [apps/api/test/integration/concurrency.int.test.ts:31-39](../../apps/api/test/integration/concurrency.int.test.ts#L31-L39). With a single Fastify event loop and pg pool serialization, the test can pass without ever truly racing — the assertion `final.completed === true || final.completed === false` is trivially satisfied. The test still proves "no error/deadlock under contention" (NFR6), but the LWW non-determinism itself is not directly observed. Future stress/chaos test would harden.
+- **Idempotent test doesn't compare bodies of repeated PATCHes byte-for-byte** — [apps/api/test/integration/todos.int.test.ts:233-251](../../apps/api/test/integration/todos.int.test.ts#L233-L251). Both PATCHes return 200 with `completed: true`, but a regression where the second response differs in any other field (`text`, `id`) would not be caught. Low-priority test hardening.
+- **Unknown-field test depends solely on `.strict()` being on** — [apps/api/test/integration/todos.int.test.ts:299-313](../../apps/api/test/integration/todos.int.test.ts#L299-L313). If `UpdateTodoRequestSchema` ever drops `.strict()`, Zod would silently strip the unknown `text` field and the route would 200 instead of 400. The shared schema's contract tests cover strictness; a redundant assertion at the integration boundary would catch cross-package drift earlier. Low risk.
+- **No test for wrong/missing `Content-Type` on PATCH** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Same pre-existing gap as Story 2.1; revisit when an error-envelope-focused story lands.
+- **No test for malformed-JSON body or `completed: null`** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Schema rejects null and Fastify rejects malformed JSON before the handler runs; both are framework-level guarantees but worth a single-line test each.
+
 ## Deferred from: code review of story 2-1 (2026-04-29)
 
 ### Story 2.1 — POST /todos endpoint (commits `c9ec25a..a94e6cc`)
