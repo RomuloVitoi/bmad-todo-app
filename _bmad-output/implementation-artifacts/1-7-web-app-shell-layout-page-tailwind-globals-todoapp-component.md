@@ -1,6 +1,6 @@
 # Story 1.7: Web app shell — layout, page, Tailwind globals, `TodoApp` component
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -230,6 +230,32 @@ So that the app's shape is apparent immediately and the list component has a pla
     - **Optional deletions** (only if Task 6 found them): files under [apps/web/public/](../../apps/web/public/) other than `favicon.ico`. Use `git rm`.
   - [x] Commit message: `feat(web): app shell + Tailwind globals + TodoApp placeholder (Story 1.7)`
   - [x] **Do NOT** stage anything in `apps/api/`, `packages/shared/`, or other unrelated areas. If `git status` shows surprises, investigate before staging.
+
+### Review Findings (AI)
+
+_Code review run 2026-04-29 (commit `6ec778f`). Three parallel layers: Blind Hunter, Edge Case Hunter (read Next.js 16 docs in `node_modules/`), Acceptance Auditor. Auditor's "globals.css blocks not in diff" concerns verified live — file IS intact (`:root`/`@theme inline`/`@media` all present per Story 1.1). No remaining references to the 5 deleted boilerplate SVGs anywhere in `apps/web` (verified via grep)._
+
+**Decision resolved (1):**
+
+- [x] [Review][Decision] **`border-current/10` Tailwind v4 slash modifier on `currentColor`** [apps/web/src/components/TodoApp.tsx:13] → **resolved by accepting FR33's "modern browsers" interpretation + documenting the `color-mix()` floor in [apps/web/AGENTS.md](../../apps/web/AGENTS.md)** so future contributors know which browser versions are guaranteed. Path alias / Turbopack non-TS file resolution (deferred item) also rolled into the same AGENTS.md addition since it's the same audience. Sources: blind+edge.
+
+**Patches (actionable now):**
+
+- [x] [Review][Patch] **`aria-live="polite"` on the static placeholder will spam screen readers** [apps/web/src/components/TodoApp.tsx:9] — JAWS/NVDA announce live regions on insertion AND on text changes. On first paint, "The list will appear here." is spoken aloud — useless and annoying. Worse: once Story 1.9 swaps the placeholder for a dynamic list, every single update fires another announcement (entire region's mutations are announced, not deltas). The architecture's intent is for the live region to wrap a status node populated only when content changes. Fix: drop `aria-live="polite"` from the placeholder div. Story 1.9 will reintroduce it on a narrower status node (e.g., a hidden `<div role="status">` that only carries the current load-state copy). Source: blind+edge (high-confidence).
+- [x] [Review][Patch] **Geist fonts loaded via `next/font/google` but never applied to the body** [apps/web/src/app/layout.tsx:5-12 + apps/web/src/app/globals.css:8-13] — `geistSans.variable` / `geistMono.variable` set the `--font-geist-sans` / `--font-geist-mono` CSS vars on `<html>`, and `globals.css`'s `@theme inline { --font-sans: var(--font-geist-sans) }` maps them onto Tailwind's font tokens — but no `font-sans` Tailwind utility is applied anywhere, AND Tailwind v4's preflight does NOT auto-apply `font-family` to `<body>` (v3 did via `theme(fontFamily.sans)`; v4 changed). Net effect: fonts download (perf cost) but the page renders in the browser default (Times New Roman on some Safari versions). The boilerplate `body { font-family: Arial, Helvetica, sans-serif }` was removed without a replacement. Fix: add `font-sans` to the `<body>` Tailwind class list in `apps/web/src/app/layout.tsx`. Tailwind v4 will resolve `font-sans` → `var(--font-sans)` → `var(--font-geist-sans)`. Source: blind (Med).
+- [x] [Review][Patch] **`:focus-visible { border-radius: 2px }` mutates the FOCUSED ELEMENT'S geometry, not the outline corner** [apps/web/src/app/globals.css:26] — `border-radius` in a `:focus-visible` rule applies to the element itself (briefly snapping a `rounded-full` button to 2px corners while focused on Chromium that does follow border-radius for outline; on Safari < 16.4 the property is ignored for outlines entirely; on Firefox outlines are auto-rounded regardless). The intended effect (round the outline) cannot be achieved cross-browser via `border-radius` on `:focus-visible`. Fix: remove the `border-radius: 2px;` line. The remaining `outline: 2px solid #2563eb; outline-offset: 2px;` is correct on its own — modern Chromium auto-rounds the outline to follow each element's own border-radius; Firefox auto-rounds; Safari draws a square outline-offset rectangle. All meet WCAG 2.2 SC 1.4.11 (≥3:1 non-text contrast). Source: edge (Med).
+
+**Deferred (real, but not blocking 1.7; tracked in [deferred-work.md](deferred-work.md)):**
+
+- [x] [Review][Defer] **Hydration / FOUC risk for dark-mode users** [apps/web/src/app/globals.css:15-19] — `prefers-color-scheme: dark` swap is CSS-only (hydration-safe in the strict sense, no JSX branching). But SSG bakes the light-mode CSS at build; on dark-mode clients the @media kicks in at first paint, causing a visible white-then-flip flash. Future `next-themes` / class-based dark mode will need a refactor to add a `html.dark` selector path. Acceptable for v1 MVP; revisit if a no-flicker theme script lands.
+- [x] [Review][Defer] **Geist Google fonts fail at build offline** [apps/web/src/app/layout.tsx:2] — Air-gapped CI runners or restrictive corporate proxies will hard-fail `next build`. Production CI is presumably online. Add a `fallback` array (`fallback: ['system-ui', 'arial']`) or vendor Geist via `next/font/local` if/when this becomes a real problem. Story 1.11 deployment-hardening is the natural place.
+- [x] [Review][Defer] **Path alias `@/*` works for TS/TSX but Turbopack doesn't read `tsconfig.paths` for non-TS files** [apps/web/src/app/page.tsx:1] — Forward-trap when a future contributor imports `@/components/foo.css` or `@/components/icon.svg`. Document in `apps/web/AGENTS.md` or mirror the alias into `next.config.ts` `turbopack.resolveAlias`. No current consumer.
+- [x] [Review][Defer] **No skip-link for keyboard users** [apps/web/src/app/layout.tsx + page.tsx] — `:focus-visible` ring is in place but no `<a href="#main">Skip to content</a>` exists at the top of the page. Architecture-level a11y addition; not strictly an AC violation for 1.7. Add when the first complex layout (sidebar/header) lands.
+- [x] [Review][Defer] **`<section aria-labelledby="todos-heading">` couples to the in-tree `<h1>` location** [apps/web/src/components/TodoApp.tsx:5-8] — If a future story moves the `<h1>` into a header bar (likely in 1.8/1.9 when state-machine controls land), `aria-labelledby` will dangle and screen readers fall back to "section" with no accessible name. Refactor-time concern.
+- [x] [Review][Defer] **`min-h-full` cascade fragility at extreme viewports** [apps/web/src/app/layout.tsx:25-30] — `<body class="min-h-full">` cascades from `<html class="h-full">`. Without explicit `height: 100%` on `:root`, edge-case viewports (0px iframes, print stylesheets, unusual zooms) may break the layout. Acceptable for an MVP scaffold; revisit before any iframe-embed or print scenarios.
+- [x] [Review][Defer] **Hard-coded focus outline color `#2563eb` ignores design tokens / dark mode** [apps/web/src/app/globals.css:24] — Doesn't use `--foreground` or any CSS var. Story spec justifies via WCAG math (contrast ratios documented); ratios hold in both light AND dark modes (7.2:1 / 8.6:1). Theming concern, not a defect.
+
+**Dismissed (~8):** Blind's "two `<h1>` elements" speculation (current page has exactly one); Blind's "client component with zero interactivity" (intentional — Story 1.8 will add `useReducer` next, removing/re-adding `'use client'` is busywork); Blind's "deleted SVGs without verifying references" (verified empirically: clean); all Auditor compliance verifications including the "globals.css :root/@theme inline/@media not in diff" concern (verified: file IS intact); Edge's confirmation of favicon resolution; Auditor's positive AC verifications.
 
 ## Dev Notes
 
@@ -502,3 +528,4 @@ None. Every task executed as specified:
 | ---- | ------ | ------ |
 | 2026-04-29 | Claude Opus 4.7 (Create-Story) | Story 1.7 contexted; status `backlog` → `ready-for-dev`. |
 | 2026-04-29 | Claude Opus 4.7 (Dev) | Story 1.7 implemented; status `ready-for-dev` → `review`. All 8 tasks complete; tsc + lint + build clean; live dev-server smoke confirms every AC; no automated tests added (deferred to Story 1.9 per spec). |
+| 2026-04-29 | Claude Opus 4.7 (Code Review) | Code review applied — 3 patches resolved (drop `aria-live` from static placeholder; add `font-sans` to body so Geist actually renders; remove `border-radius: 2px` from `:focus-visible`), 7 deferred to [deferred-work.md](deferred-work.md), 8 dismissed. Decision dismissed: `border-current/10` `color-mix()` browser floor accepted as FR33 "modern browsers" — added documentation to [apps/web/AGENTS.md](../../apps/web/AGENTS.md). Status: `review` → `done`. tsc + lint + build clean; apps/api 19/19 + packages/shared 25/25 still pass; live dev-smoke confirms all 3 patches landed in rendered HTML. |

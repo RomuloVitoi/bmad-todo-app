@@ -21,8 +21,11 @@
 
 @layer base {
   :focus-visible {
+    /* Modern Chromium auto-rounds the outline to follow the focused element's
+       border-radius; Firefox auto-rounds; Safari draws a square outline-offset
+       rectangle. Setting `border-radius` HERE would mutate the focused
+       element's own geometry (not the outline corners) — explicitly omitted. */
     outline: 2px solid #2563eb;
     outline-offset: 2px;
-    border-radius: 2px;
   }
 }

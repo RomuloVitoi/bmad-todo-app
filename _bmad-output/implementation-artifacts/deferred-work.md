@@ -2,6 +2,18 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 1-7 (2026-04-29)
+
+### Story 1.7 — apps/web shell + Tailwind + TodoApp placeholder (commit `6ec778f`)
+
+- **Hydration / FOUC risk for dark-mode users** — `apps/web/src/app/globals.css:15-19`. CSS-only `prefers-color-scheme: dark` swap is hydration-safe in React's strict sense (no JSX branching), but SSG bakes light-mode CSS at build → dark-mode clients see a white-then-flip flash at first paint. Future class-based dark mode (e.g., `next-themes`) needs `html.dark` selector path. Acceptable for v1 MVP; revisit if a no-flicker theme script lands.
+- **Geist Google fonts fail at build offline** — `apps/web/src/app/layout.tsx:2`. Air-gapped CI / restrictive corporate proxies / Docker stages without network will hard-fail `next build`. No `fallback` array declared. Mitigate with `fallback: ['system-ui', 'arial']` or vendor Geist via `next/font/local` if/when this becomes a real problem. Story 1.11 deployment-hardening is the natural place.
+- **Path alias `@/*` works for TS/TSX but Turbopack doesn't read `tsconfig.paths` for non-TS files** — `apps/web/src/app/page.tsx:1`. Forward-trap: a future contributor importing `@/components/foo.css` or `@/components/icon.svg` will get a Turbopack resolution error even though the editor's TS Language Server resolves it fine. Document in `apps/web/AGENTS.md` or mirror the alias into `next.config.ts` `turbopack.resolveAlias` if it becomes a real problem.
+- **No skip-link for keyboard users** — `apps/web/src/app/layout.tsx + page.tsx`. `:focus-visible` ring is in place but no `<a href="#main">Skip to content</a>` exists. Architecture-level a11y addition; not an AC violation for 1.7. Add when the first complex layout (sidebar/header) lands.
+- **`<section aria-labelledby="todos-heading">` couples to the in-tree `<h1>` location** — `apps/web/src/components/TodoApp.tsx:5-8`. If a future story moves the `<h1>` into a header bar, `aria-labelledby` dangles and screen readers fall back to "section" with no accessible name. Refactor-time concern.
+- **`min-h-full` cascade fragility at extreme viewports** — `apps/web/src/app/layout.tsx:25-30`. Without explicit `height: 100%` on `:root`, edge-case viewports (0px iframes, print stylesheets, unusual zooms) may break the layout. Acceptable for an MVP scaffold; revisit before any iframe-embed or print scenarios.
+- **Hard-coded focus outline color `#2563eb` ignores design tokens / dark mode** — `apps/web/src/app/globals.css:24`. Doesn't use `--foreground` or any CSS var. Story spec justifies via WCAG math (7.2:1 / 8.6:1 in both modes — both AAA). Theming concern, not a defect.
+
 ## Deferred from: code review of story 1-6 (2026-04-29)
 
 ### Story 1.6 — apps/api /health + /docs (commit `e044afa`)

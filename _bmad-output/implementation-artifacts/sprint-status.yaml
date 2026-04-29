@@ -49,7 +49,7 @@ development_status:
   1-4-api-data-layer-drizzle-schema-migration-client-fail-fast-check: review
   1-5-get-todos-endpoint-with-full-plugin-stack-and-observability: done
   1-6-health-and-docs-endpoints: done
-  1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: review
+  1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
   1-8-typed-api-client-error-types-and-load-reducer: ready-for-dev
   1-9-render-list-states-loading-empty-populated-read-only: backlog
   1-10-single-command-local-dev-orchestration: backlog

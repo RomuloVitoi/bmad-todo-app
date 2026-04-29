@@ -8,7 +8,6 @@ export default function TodoApp() {
       </h1>
       <div
         data-testid="todo-list-placeholder"
-        aria-live="polite"
         className="rounded-md border border-current/10 px-4 py-8 text-center text-sm opacity-70"
       >
         The list will appear here.
