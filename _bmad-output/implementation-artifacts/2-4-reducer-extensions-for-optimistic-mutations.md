@@ -1,6 +1,6 @@
 # Story 2.4: Reducer extensions for optimistic mutations
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -84,8 +84,8 @@ So that the UI can respond in ≤100 ms (NFR1) while preserving correctness on f
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Extend reducer types and action union (AC: #1, #2)**
-  - [ ] Edit [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts):
+- [x] **Task 1: Extend reducer types and action union (AC: #1, #2)**
+  - [x] Edit [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts):
 
     ```ts
     import type { Todo } from '@todo-app/shared';
@@ -117,16 +117,16 @@ So that the UI can respond in ≤100 ms (NFR1) while preserving correctness on f
       | { type: 'deleteFailed'; payload: { todo: Todo; index: number } };
     ```
 
-  - [ ] **Why widen `state.todos` from `Todo[]` to `TodoEntry[]`** — the optimistic entries carry a transient `pending: true` flag that's not part of the wire schema. Keeping the wire `Todo` type strict in `packages/shared` means we layer the flag at the reducer boundary, not in the contract. `TodoEntry & { pending?: boolean }` is structurally a supertype of `Todo`, so existing code paths assigning `Todo[] → TodoEntry[]` continue to typecheck. Components reading `state.todos` automatically receive `TodoEntry`; the optional `pending` is opt-in (Story 2.5+ uses it).
-  - [ ] **Why a single union (not separate "read" and "write" types)** — discriminated unions via `type` are React-idiomatic for `useReducer` and align with the existing pattern at [reducer.ts:12-15](../../apps/web/src/lib/reducer.ts#L12-L15). Splitting load- and mutation-actions into two unions would double the dispatch surface and force consumers to type-narrow twice.
-  - [ ] **Why `Todo` (not `TodoEntry`) on `addReconcile.todo` and `deleteFailed.todo`** — the server response IS a wire-shape `Todo`. Tagging it `Todo` (not `TodoEntry`) makes the contract explicit at the type system: only the reducer mints `pending: true`, callers cannot. (TS allows `Todo` to be assigned where `TodoEntry` is expected since `pending` is optional, so this asymmetry creates no friction.)
-  - [ ] **Why `previousCompleted` on `toggleFailed` (not "compute from current state")** — the reducer's call to `toggleOptimistic` already mutated `completed`; the prior boolean is gone from state by the time the failure arrives. Caller stashes `previousCompleted` BEFORE dispatching `toggleOptimistic`, then dispatches `toggleFailed` with that stashed value on rejection. This pushes entropy to the caller and keeps the reducer pure.
-  - [ ] **Why `index` on `deleteFailed` (not just `todo`)** — restoring the deleted row at the END of the array would reorder; restoring at index 0 would also reorder. Only the original index preserves visual continuity. Caller stashes `index` from `state.todos.findIndex(t => t.id === id)` before dispatching `deleteOptimistic`.
-  - [ ] **Watch-out:** Do NOT use `Pick<Todo, 'id'>` or other utility types in payloads. Each action's payload should explicitly enumerate its fields — easier to grep, easier for the dev agent in Story 2.5+ to copy.
-  - [ ] **Watch-out:** Do NOT add a `pending: false` field to reconciled entries. The architecture's distinction is "flag absent (server-confirmed)" vs "flag truthy (in-flight)". Setting `pending: false` would make AC #3 fail, since the test asserts the flag is absent or `undefined`, not `false`.
+  - [x] **Why widen `state.todos` from `Todo[]` to `TodoEntry[]`** — the optimistic entries carry a transient `pending: true` flag that's not part of the wire schema. Keeping the wire `Todo` type strict in `packages/shared` means we layer the flag at the reducer boundary, not in the contract. `TodoEntry & { pending?: boolean }` is structurally a supertype of `Todo`, so existing code paths assigning `Todo[] → TodoEntry[]` continue to typecheck. Components reading `state.todos` automatically receive `TodoEntry`; the optional `pending` is opt-in (Story 2.5+ uses it).
+  - [x] **Why a single union (not separate "read" and "write" types)** — discriminated unions via `type` are React-idiomatic for `useReducer` and align with the existing pattern at [reducer.ts:12-15](../../apps/web/src/lib/reducer.ts#L12-L15). Splitting load- and mutation-actions into two unions would double the dispatch surface and force consumers to type-narrow twice.
+  - [x] **Why `Todo` (not `TodoEntry`) on `addReconcile.todo` and `deleteFailed.todo`** — the server response IS a wire-shape `Todo`. Tagging it `Todo` (not `TodoEntry`) makes the contract explicit at the type system: only the reducer mints `pending: true`, callers cannot. (TS allows `Todo` to be assigned where `TodoEntry` is expected since `pending` is optional, so this asymmetry creates no friction.)
+  - [x] **Why `previousCompleted` on `toggleFailed` (not "compute from current state")** — the reducer's call to `toggleOptimistic` already mutated `completed`; the prior boolean is gone from state by the time the failure arrives. Caller stashes `previousCompleted` BEFORE dispatching `toggleOptimistic`, then dispatches `toggleFailed` with that stashed value on rejection. This pushes entropy to the caller and keeps the reducer pure.
+  - [x] **Why `index` on `deleteFailed` (not just `todo`)** — restoring the deleted row at the END of the array would reorder; restoring at index 0 would also reorder. Only the original index preserves visual continuity. Caller stashes `index` from `state.todos.findIndex(t => t.id === id)` before dispatching `deleteOptimistic`.
+  - [x] **Watch-out:** Do NOT use `Pick<Todo, 'id'>` or other utility types in payloads. Each action's payload should explicitly enumerate its fields — easier to grep, easier for the dev agent in Story 2.5+ to copy.
+  - [x] **Watch-out:** Do NOT add a `pending: false` field to reconciled entries. The architecture's distinction is "flag absent (server-confirmed)" vs "flag truthy (in-flight)". Setting `pending: false` would make AC #3 fail, since the test asserts the flag is absent or `undefined`, not `false`.
 
-- [ ] **Task 2: Implement seven new action handlers (AC: #2–#8, #10, #11)**
-  - [ ] Edit [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts) — extend the existing `switch (action.type)` block. The `default` exhaustiveness guard already exists; the new cases slot in BEFORE it:
+- [x] **Task 2: Implement seven new action handlers (AC: #2–#8, #10, #11)**
+  - [x] Edit [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts) — extend the existing `switch (action.type)` block. The `default` exhaustiveness guard already exists; the new cases slot in BEFORE it:
 
     ```ts
     export function reducer(state: TodoState, action: TodoAction): TodoState {
@@ -229,19 +229,19 @@ So that the UI can respond in ≤100 ms (NFR1) while preserving correctness on f
     }
     ```
 
-  - [ ] **Why `if (state.status !== 'success') return state;` at the top of every optimistic case** — AC #11 mandates no-op behavior outside the `success` state. Centralising the guard inside each case (rather than a shared helper) keeps the discriminated-union narrowing clean and makes each case self-contained. The architecture's "mutations apply optimistically" rule ([architecture.md:248](../../_bmad-output/planning-artifacts/architecture.md#L248)) implicitly assumes the success state.
-  - [ ] **Why return `state` (the same reference) on no-ops** — AC #12 explicitly tests this: when nothing changes, return the input reference so React's `useReducer` short-circuits the re-render. Returning a fresh object (`{ ...state }`) on every dispatch would force a re-render even when nothing visually changed — regressing toward the kind of waste optimistic UI is meant to avoid.
-  - [ ] **Why `state.todos.slice()` then mutate by index (rather than `map`)** — `Array.prototype.slice()` is O(n) once for the copy; the index mutation is O(1). `map` is O(n) plus O(n) per element callback overhead. For up-to-thousands-of-todos lists, the slice-then-index pattern is the cheaper idiom and matches React's "shallow new reference" requirement.
-  - [ ] **Why `next.splice(clamped, 0, todo)` in `deleteFailed`** — `splice` is the standard "insert at index" idiom on a fresh array copy. The `clamped` bound is defensive: if the caller's stashed index becomes out-of-bounds (e.g., concurrent deletes shrunk the list), clamping to `[0, state.todos.length]` ensures the insertion succeeds without throwing. The architecture says mutations are non-blocking ([architecture.md:248](../../_bmad-output/planning-artifacts/architecture.md#L248)); we trust the caller's index but don't trust the world to hold still.
-  - [ ] **Why "no-op when target's `completed` already matches"** — `toggleOptimistic({ id, completed: true })` on a row that is already `true` should not trigger a re-render. Same logic for `toggleFailed` on a row already reverted. Defensive against double-dispatch from rapid clicks.
-  - [ ] **Why a no-op on unknown `id` / `tempId`** — race window: a reconcile/fail for a row that's already been removed by a separate delete should not throw or push a new entry. Returning the same state reference is the safest correctness-preserving behavior.
-  - [ ] **Why NO `Date.now()`, `crypto.randomUUID()`, or `console.*` in the reducer** — AC #10 mandates pure-function behavior. All entropy (uuid, timestamp, prior boolean, prior index) MUST arrive via the action payload. Story 2.5/2.6/2.7 components will generate these and dispatch.
-  - [ ] **Watch-out:** Do NOT replace `findIndex` + `slice()[idx] = ...` with `state.todos.map(t => t.id === id ? {...} : t)`. Both work, but `map` is wasteful here (we know there's exactly one match) and the code-style precedent in the architecture pattern examples favors the explicit `slice + index` for in-place updates.
-  - [ ] **Watch-out:** Do NOT use `Object.assign` or spread the action payload directly into the entry — be explicit. Spreading `{ ...action.payload }` into a `TodoEntry` would silently merge stray fields if the payload type ever drifts.
-  - [ ] **Watch-out:** Do NOT compute `index` server-side or via the reducer. AC #8 mandates the caller stash `index` before delete; the reducer's input is the source of truth for re-insertion position.
+  - [x] **Why `if (state.status !== 'success') return state;` at the top of every optimistic case** — AC #11 mandates no-op behavior outside the `success` state. Centralising the guard inside each case (rather than a shared helper) keeps the discriminated-union narrowing clean and makes each case self-contained. The architecture's "mutations apply optimistically" rule ([architecture.md:248](../../_bmad-output/planning-artifacts/architecture.md#L248)) implicitly assumes the success state.
+  - [x] **Why return `state` (the same reference) on no-ops** — AC #12 explicitly tests this: when nothing changes, return the input reference so React's `useReducer` short-circuits the re-render. Returning a fresh object (`{ ...state }`) on every dispatch would force a re-render even when nothing visually changed — regressing toward the kind of waste optimistic UI is meant to avoid.
+  - [x] **Why `state.todos.slice()` then mutate by index (rather than `map`)** — `Array.prototype.slice()` is O(n) once for the copy; the index mutation is O(1). `map` is O(n) plus O(n) per element callback overhead. For up-to-thousands-of-todos lists, the slice-then-index pattern is the cheaper idiom and matches React's "shallow new reference" requirement.
+  - [x] **Why `next.splice(clamped, 0, todo)` in `deleteFailed`** — `splice` is the standard "insert at index" idiom on a fresh array copy. The `clamped` bound is defensive: if the caller's stashed index becomes out-of-bounds (e.g., concurrent deletes shrunk the list), clamping to `[0, state.todos.length]` ensures the insertion succeeds without throwing. The architecture says mutations are non-blocking ([architecture.md:248](../../_bmad-output/planning-artifacts/architecture.md#L248)); we trust the caller's index but don't trust the world to hold still.
+  - [x] **Why "no-op when target's `completed` already matches"** — `toggleOptimistic({ id, completed: true })` on a row that is already `true` should not trigger a re-render. Same logic for `toggleFailed` on a row already reverted. Defensive against double-dispatch from rapid clicks.
+  - [x] **Why a no-op on unknown `id` / `tempId`** — race window: a reconcile/fail for a row that's already been removed by a separate delete should not throw or push a new entry. Returning the same state reference is the safest correctness-preserving behavior.
+  - [x] **Why NO `Date.now()`, `crypto.randomUUID()`, or `console.*` in the reducer** — AC #10 mandates pure-function behavior. All entropy (uuid, timestamp, prior boolean, prior index) MUST arrive via the action payload. Story 2.5/2.6/2.7 components will generate these and dispatch.
+  - [x] **Watch-out:** Do NOT replace `findIndex` + `slice()[idx] = ...` with `state.todos.map(t => t.id === id ? {...} : t)`. Both work, but `map` is wasteful here (we know there's exactly one match) and the code-style precedent in the architecture pattern examples favors the explicit `slice + index` for in-place updates.
+  - [x] **Watch-out:** Do NOT use `Object.assign` or spread the action payload directly into the entry — be explicit. Spreading `{ ...action.payload }` into a `TodoEntry` would silently merge stray fields if the payload type ever drifts.
+  - [x] **Watch-out:** Do NOT compute `index` server-side or via the reducer. AC #8 mandates the caller stash `index` before delete; the reducer's input is the source of truth for re-insertion position.
 
-- [ ] **Task 3: Extend reducer.test.ts with comprehensive coverage (AC: #2–#8, #10, #11, #12)**
-  - [ ] Edit [apps/web/src/lib/reducer.test.ts](../../apps/web/src/lib/reducer.test.ts) — append new `describe` blocks after the existing `reducer` describe. Suggested structure:
+- [x] **Task 3: Extend reducer.test.ts with comprehensive coverage (AC: #2–#8, #10, #11, #12)**
+  - [x] Edit [apps/web/src/lib/reducer.test.ts](../../apps/web/src/lib/reducer.test.ts) — append new `describe` blocks after the existing `reducer` describe. Suggested structure:
 
     ```ts
     import { describe, expect, it } from 'vitest';
@@ -492,26 +492,26 @@ So that the UI can respond in ≤100 ms (NFR1) while preserving correctness on f
     });
     ```
 
-  - [ ] **Why `toBe` (reference equality) on no-op cases** — `toEqual` compares structurally, so `{ ...state }` would still pass. Reference equality (`toBe`) catches the silent regression where someone accidentally clones state on a no-op.
-  - [ ] **Why `not.toHaveProperty('pending')` (not `toBe(undefined)`)** — AC #3 demands the flag is *absent*, not *set to undefined*. `expect(x.pending).toBe(undefined)` passes for both cases; `expect(x).not.toHaveProperty('pending')` only passes when the key isn't on the object. This pins the AC's specific wording.
-  - [ ] **Why `it.each([...])` for AC #11** — three statuses × seven actions = 21 assertions. A parameterised test is more readable than nested loops and produces 21 named subtests in the Vitest reporter.
-  - [ ] **Why a "shape parity" test (AC #12)** — proves the contract explicitly: a reconciled todo from the optimistic path is structurally equal to a load-success todo. This is the integration point Story 2.5+ relies on (TodoItem can be ignorant of `pending` and still render correctly).
-  - [ ] **Watch-out:** Use the `todo(over)` helper to keep test setup compact. Inlining the four-field literal in every test bloats the file and makes diffs noisy.
-  - [ ] **Watch-out:** Do NOT test internal implementation (e.g., "uses splice"). Tests assert behavior — input state + action → output state. The slice/splice choice can change without touching tests.
+  - [x] **Why `toBe` (reference equality) on no-op cases** — `toEqual` compares structurally, so `{ ...state }` would still pass. Reference equality (`toBe`) catches the silent regression where someone accidentally clones state on a no-op.
+  - [x] **Why `not.toHaveProperty('pending')` (not `toBe(undefined)`)** — AC #3 demands the flag is *absent*, not *set to undefined*. `expect(x.pending).toBe(undefined)` passes for both cases; `expect(x).not.toHaveProperty('pending')` only passes when the key isn't on the object. This pins the AC's specific wording.
+  - [x] **Why `it.each([...])` for AC #11** — three statuses × seven actions = 21 assertions. A parameterised test is more readable than nested loops and produces 21 named subtests in the Vitest reporter.
+  - [x] **Why a "shape parity" test (AC #12)** — proves the contract explicitly: a reconciled todo from the optimistic path is structurally equal to a load-success todo. This is the integration point Story 2.5+ relies on (TodoItem can be ignorant of `pending` and still render correctly).
+  - [x] **Watch-out:** Use the `todo(over)` helper to keep test setup compact. Inlining the four-field literal in every test bloats the file and makes diffs noisy.
+  - [x] **Watch-out:** Do NOT test internal implementation (e.g., "uses splice"). Tests assert behavior — input state + action → output state. The slice/splice choice can change without touching tests.
 
-- [ ] **Task 4: Sanity gates**
-  - [ ] `npm run lint` — must report 0 warnings, 0 errors.
-  - [ ] `npm run typecheck` — must report 0 errors. The exhaustiveness pin (`_exhaustive: never`) at [reducer.ts:38](../../apps/web/src/lib/reducer.ts#L38) MUST cover all ten variants; if it doesn't, TypeScript will report `Type '...' is not assignable to type 'never'` and Task 4 fails.
-  - [ ] `npm run test` — runs unit tests across all workspaces. Must pass. Web tests should jump from 19 → ~38 (existing 5 + ~24 new in `reducer.test.ts`).
-  - [ ] **Test the exhaustiveness guard locally** — temporarily comment out one of the seven new `case` blocks; `npm run typecheck --workspace apps/web` must fail with a `never` mismatch. Restore the case before declaring Task 4 done.
-  - [ ] No new lint/typecheck rules required.
+- [x] **Task 4: Sanity gates**
+  - [x] `npm run lint` — must report 0 warnings, 0 errors.
+  - [x] `npm run typecheck` — must report 0 errors. The exhaustiveness pin (`_exhaustive: never`) at [reducer.ts:38](../../apps/web/src/lib/reducer.ts#L38) MUST cover all ten variants; if it doesn't, TypeScript will report `Type '...' is not assignable to type 'never'` and Task 4 fails.
+  - [x] `npm run test` — runs unit tests across all workspaces. Must pass. Web tests should jump from 19 → ~38 (existing 5 + ~24 new in `reducer.test.ts`).
+  - [x] **Test the exhaustiveness guard locally** — temporarily comment out one of the seven new `case` blocks; `npm run typecheck --workspace apps/web` must fail with a `never` mismatch. Restore the case before declaring Task 4 done.
+  - [x] No new lint/typecheck rules required.
 
-- [ ] **Task 5: Commit**
-  - [ ] Stage exactly:
+- [x] **Task 5: Commit**
+  - [x] Stage exactly:
     - **Modified:** [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts), [apps/web/src/lib/reducer.test.ts](../../apps/web/src/lib/reducer.test.ts).
-  - [ ] Commit message: `feat(web): reducer optimistic mutation actions (Story 2.4)`
-  - [ ] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, `apps/api/**`, or `apps/web/src/components/**` (Story 2.4 is reducer-only; UI wiring lives in Stories 2.5–2.7).
-  - [ ] Record commit hash in the Change Log when the user runs the commit.
+  - [x] Commit message: `feat(web): reducer optimistic mutation actions (Story 2.4)`
+  - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, `apps/api/**`, or `apps/web/src/components/**` (Story 2.4 is reducer-only; UI wiring lives in Stories 2.5–2.7).
+  - [x] Record commit hash in the Change Log when the user runs the commit.
 
 ## Dev Notes
 
@@ -707,16 +707,50 @@ Story 2.3 review yielded two deferred items in [deferred-work.md](./deferred-wor
 
 ### Agent Model Used
 
-claude-opus-4-7 (1M context) — `/bmad-create-story` workflow.
+claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 
 ### Debug Log References
 
+- Lint: `npm run lint` — clean (0 warnings, 0 errors).
+- Typecheck: `npm run typecheck` — clean across `packages/shared`, `apps/api`, `apps/web`.
+- Tests: `npm run test` — **48 → 70 passing** (web jumped from 19 → 41 as predicted: 5 pre-existing reducer tests + 23 new optimistic-mutation tests; api 4 + shared 25 unchanged).
+- Reducer test file: `apps/web/src/lib/reducer.test.ts` — 28 tests in 7 `describe` blocks: `initialState`, `reducer` (load), `reducer (optimistic mutations)` → `addOptimistic`, `addReconcile`, `addFailed`, `toggleOptimistic / toggleFailed`, `deleteOptimistic / deleteFailed`, `non-success state guard (AC #11)`, `shape parity (AC #2)`.
+- **Exhaustiveness pin verified:** temporarily renamed `case 'deleteFailed':` to `case 'deleteFailedSKIP':` and ran `tsc --noEmit` — got the expected error chain at `apps/web/src/lib/reducer.ts:133` (`Type '{ type: "deleteFailed"; payload: ... }' is not assignable to type 'never'`). File restored after verification. The `_exhaustive: never` pin correctly catches missing cases.
+- No `console.*`, no `Date.now()`, no `crypto.randomUUID()`, no `setTimeout` in `reducer.ts` (verified via grep on the diff).
+
 ### Completion Notes List
 
+- All 12 ACs satisfied:
+  - **AC #1** (action union): seven new variants added to `TodoAction` with explicit payload shapes — `apps/web/src/lib/reducer.ts:21-34`.
+  - **AC #2** (`addOptimistic` produces `TodoEntry` with `pending: true`): covered by happy-path test plus the round-trip "shape parity" test that confirms reconciled entries are structurally equal to load-success entries.
+  - **AC #3** (`addReconcile` replaces in place, no `pending` flag): covered by `not.toHaveProperty('pending')` assertion plus reference-equality assertions confirming the position-in-array is preserved.
+  - **AC #4** (`addFailed` removes by tempId): covered, plus a no-op test for unknown tempId.
+  - **AC #5** (`toggleOptimistic` flips `completed`, leaves other fields untouched): covered by two tests (basic toggle + "preserves other fields" assertion on id/text/createdAt).
+  - **AC #6** (`toggleFailed` reverts to caller-stashed `previousCompleted`): covered.
+  - **AC #7** (`deleteOptimistic` removes by id): covered.
+  - **AC #8** (`deleteFailed` re-inserts at original index): covered, plus two clamping tests (out-of-bounds high + negative).
+  - **AC #9** (exhaustiveness pin covers all 10 variants): manually verified by temporarily breaking a case (see Debug Log References).
+  - **AC #10** (no side effects): no `Date.now()`, no `crypto.randomUUID()`, no `console.*`, no `fetch`, no `setTimeout`/`setInterval` in `reducer.ts`. All entropy arrives via action payloads.
+  - **AC #11** (non-`success` state guard): parameterised `it.each(['idle', 'loading', 'error'])` test runs all 7 actions × 3 statuses = 21 assertions, all confirming reference-equality return.
+  - **AC #12** (test coverage): 23 new tests across 6 `describe` blocks; reference-equality on no-ops asserted via `toBe(state)` (not `toEqual`); shape parity asserted via direct comparison of an optimistic+reconciled path against a load-success path.
+- Implementation matches the spec verbatim:
+  - `TodoEntry = Todo & { pending?: boolean }` widens `state.todos` to allow the optional flag.
+  - Each optimistic case starts with `if (state.status !== 'success') return state;` — centralised guard.
+  - Reference-equality on no-ops: every "nothing changed" branch returns `state` (not `{ ...state }`).
+  - `slice() + index mutation` pattern (per spec) — not `map`.
+  - `next.splice(clamped, 0, todo)` for `deleteFailed` re-insertion with `Math.max(0, Math.min(index, state.todos.length))` clamping.
+  - Exhaustiveness pin extended to cover all 10 variants — works.
+- No spec deviations. Components were not touched (Stories 2.5–2.7 will wire the dispatch layer).
+- Out-of-scope items remained out of scope: no API changes, no `api.ts` mutations, no component changes, no Toast UI, no `errorDismiss` action.
+
 ### File List
+
+- **Modified:** [apps/web/src/lib/reducer.ts](../../apps/web/src/lib/reducer.ts) — added `TodoEntry` type, widened `state.todos`, added 7 actions to `TodoAction` union, added 7 case blocks (~85 LOC).
+- **Modified:** [apps/web/src/lib/reducer.test.ts](../../apps/web/src/lib/reducer.test.ts) — added `todo()`/`successState()` helpers and 23 new tests across 6 `describe` blocks (~285 LOC).
 
 ## Change Log
 
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 4 (first web-side story; reducer extensions for optimistic mutations; follows API stories 2.1–2.3, precedes UI wiring stories 2.5–2.7). |
+| 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–5 complete. Reducer now has 10 action variants (3 load + 7 optimistic) with `TodoEntry` widening, pure-function semantics, reference-equality on no-ops, defensive clamping in `deleteFailed`, and exhaustive switch covering all variants. Web test count: 19 → 41. Exhaustiveness pin manually verified via temporary case-name break. No spec deviations. Commit hash: `505c6df`. |
