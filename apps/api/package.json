@@ -12,7 +12,9 @@
     "build:ts": "tsc",
     "watch:ts": "tsc -w",
     "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js"
+    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
+    "db:migrate": "drizzle-kit migrate",
+    "db:check": "node --experimental-strip-types src/db/migrate.ts"
   },
   "keywords": [],
   "author": "",
@@ -22,14 +24,18 @@
     "fastify-plugin": "^5.0.0",
     "@fastify/autoload": "^6.0.0",
     "@fastify/sensible": "^6.0.0",
-    "fastify-cli": "^8.0.0"
+    "fastify-cli": "^8.0.0",
+    "drizzle-orm": "^0.40.0",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
+    "@types/pg": "^8.11.0",
     "c8": "^11.0.0",
     "ts-node": "^10.4.0",
     "concurrently": "^9.0.0",
     "fastify-tsconfig": "^3.0.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "drizzle-kit": "^0.30.0"
   }
 }
