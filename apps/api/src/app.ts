@@ -8,6 +8,8 @@ import dbPlugin from './plugins/db.js';
 import helmetPlugin from './plugins/helmet.js';
 import rateLimitPlugin from './plugins/rateLimit.js';
 import requestContextPlugin from './plugins/requestContext.js';
+import swaggerPlugin from './plugins/swagger.js';
+import healthRoutes from './routes/health.js';
 import todosRoutes from './routes/todos.js';
 
 export async function buildApp(app: FastifyInstance): Promise<void> {
@@ -28,7 +30,12 @@ export async function buildApp(app: FastifyInstance): Promise<void> {
 
   await app.register(dbPlugin);
 
+  // Swagger MUST register before routes — it hooks `onRoute` and only sees
+  // routes registered after itself. Plugin returns early when docs are disabled.
+  await app.register(swaggerPlugin);
+
   await app.register(todosRoutes);
+  await app.register(healthRoutes);
 
   app.setErrorHandler((err, req, reply) => {
     const statusCode = (err as { statusCode?: number }).statusCode;

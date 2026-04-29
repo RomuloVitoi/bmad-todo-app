@@ -14,9 +14,20 @@ export default fp(
 
     // Detach + close on Fastify shutdown so re-builds in the same process
     // (test workers, hot-reload) don't accumulate listeners on the singleton pool.
+    // pool.end() throws "Called end on pool more than once" if a sibling
+    // Fastify instance has already torn down the module-singleton pool —
+    // swallow that specific case so multi-instance teardown is idempotent.
+    // (Story 1.5 deferred-work item; surfaced in Story 1.6 test infrastructure.)
     app.addHook('onClose', async () => {
       pool.off('error', onPoolError);
-      await pool.end();
+      try {
+        await pool.end();
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('end on pool more than once')) {
+          return;
+        }
+        throw err;
+      }
     });
   },
   { name: 'db', dependencies: ['@fastify/env'] },

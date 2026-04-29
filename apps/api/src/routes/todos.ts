@@ -14,6 +14,12 @@ const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => 
     '/todos',
     {
       schema: {
+        tags: ['todos'],
+        summary: 'List all todos in chronological order',
+        description:
+          'Returns the full ordered list of todos (oldest first). ' +
+          'Concurrency model: last-write-wins (LWW); no ETag, no If-Match. ' +
+          'Architecture mandates wrapping the array in `{ todos: [...] }` for additive evolvability (pagination, etc.).',
         response: { 200: TodoListResponseSchema },
       },
     },

@@ -6,7 +6,7 @@ Items intentionally deferred from code reviews. Each entry: source review, file/
 
 ### Story 1.5 — apps/api GET /todos + plugin stack (commit `727cbad`)
 
-- **Pool singleton can't survive `app.close()` in multi-instance scenarios** — `apps/api/src/db/client.ts:11`. `pool` is module-singleton and `pool.end()` permanently closes it. 1.5's tests use one `buildTestApp()` per `node:test` worker → fine for now. Re-architect (construct pool per app instance, or wrap in a lazy factory) when multi-build-per-process tests appear.
+- ~~**Pool singleton can't survive `app.close()` in multi-instance scenarios**~~ — **RESOLVED in Story 1.6** (commit pending). `apps/api/src/plugins/db.ts` now wraps `pool.end()` in a try/catch that swallows the specific "Called end on pool more than once" error message. Multi-instance teardown is idempotent without restructuring pool ownership.
 - **`onSend` x-request-id doesn't check headers-sent state** — `apps/api/src/plugins/requestContext.ts:11-13`. If a future stream endpoint begins writing before the hook runs, `reply.header('x-request-id', ...)` is a no-op or throws (Fastify version-dependent). Risk dormant until a streaming endpoint lands; revisit then.
 - **AC #3 (429 envelope) direct test** — Story 1.5 Task 12 explicitly cut this; trust the rate-limit plugin's own tests in v1. Story 1.11 (deployment-hardening) is the natural place to revisit with a real exhaustion scenario behind a feature flag.
 - **No HTTP header-size cap** — `apps/api/src/server.ts:10`. `bodyLimit: 4096` only caps request bodies. Fastify's default header limits are reasonable; no abuse observed yet. Revisit if hostile-traffic patterns emerge.
