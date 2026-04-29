@@ -1,0 +1,5 @@
+# Pin migration SQL and journal to LF so Windows checkouts don't alter line
+# endings — `apps/api/src/db/migrate.ts` SHA-256s these files and compares
+# against the hash recorded by drizzle-kit (which always sees LF).
+*.sql text eol=lf
+*.json text eol=lf
