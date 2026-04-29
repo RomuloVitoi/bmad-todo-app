@@ -923,4 +923,4 @@ claude-opus-4-7 (1M context)
 
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| 2026-04-29 | Initial implementation: web + api Dockerfiles, .dockerignores, docker-compose.production.yml, GHCR CI workflow, README "Deployment" section, Next.js standalone config. Implementation deviations vs spec documented in Debug Log References. |
+| 2026-04-29 | Initial implementation (commit `ad5e3ab`): web + api Dockerfiles, .dockerignores, docker-compose.production.yml, GHCR CI workflow, README "Deployment" section, Next.js standalone config. Implementation deviations vs spec documented in Debug Log References. |
