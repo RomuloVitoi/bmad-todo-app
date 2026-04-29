@@ -64,6 +64,7 @@ last_updated: 2026-04-29
 # 2026-04-29: 2-3 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-29: 2-3 in-progress → review (Dev-Story: DELETE /todos/:id endpoint + 5 integration tests + 1 concurrent-DELETE; 48/48 unit + 39/39 integration green on 3 consecutive runs; /docs documents DELETE with 204 + no requestBody; no spec deviations; Epic 2 API surface complete)
 # 2026-04-29: 2-3 review → done (Code-Review: 0 decision-needed, 1 patch applied — throw on rows.length > 1 in deleteTodoById to honor spec's "loud failure" PK invariant; 2 defers logged, 18 dismissed; Acceptance Auditor 7/7 ACs PASS)
+# 2026-04-29: 2-4 backlog → ready-for-dev (Create-Story: 7 reducer optimistic actions + TodoEntry type; pure-function semantics, exhaustive switch, reference-equality on no-ops; ~275 LOC across 2 files, 0 new)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -88,7 +89,7 @@ development_status:
   2-1-post-todos-endpoint: done
   2-2-patch-todos-id-endpoint-with-lww-semantics: done
   2-3-delete-todos-id-endpoint: done
-  2-4-reducer-extensions-for-optimistic-mutations: backlog
+  2-4-reducer-extensions-for-optimistic-mutations: ready-for-dev
   2-5-create-todo-via-todoinput-full-vertical-slice: backlog
   2-6-toggle-completion-via-radix-checkbox: backlog
   2-7-delete-todo-via-delete-button: backlog
