@@ -31,10 +31,15 @@ export async function buildApp(app: FastifyInstance): Promise<void> {
   await app.register(todosRoutes);
 
   app.setErrorHandler((err, req, reply) => {
-    if ((err as { statusCode?: number }).statusCode) {
-      req.log.warn({ err }, 'request error');
+    const statusCode = (err as { statusCode?: number }).statusCode;
+    if (statusCode) {
+      // 4xx are normal client errors (validation 400, 404 etc.) — info-level.
+      // 5xx that arrive here pre-typed (e.g., reply.internalServerError()) — warn.
+      const log = statusCode >= 500 ? req.log.warn : req.log.info;
+      log.call(req.log, { err }, 'request error');
       return reply.send(err);
     }
+    // Truly unhandled — log at error level with full stack and return the 500 envelope.
     req.log.error({ err }, 'unhandled error');
     return reply.internalServerError();
   });

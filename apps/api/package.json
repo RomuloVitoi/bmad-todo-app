@@ -6,13 +6,13 @@
   "main": "src/server.ts",
   "scripts": {
     "build:ts": "tsc",
-    "dev": "node --env-file=../../.env --watch --import tsx src/server.ts",
-    "start": "npm run build:ts && node dist/server.js",
-    "test": "node --env-file=../../.env --import tsx --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
-    "test:unit": "node --env-file=../../.env --import tsx --test \"src/**/*.test.ts\"",
-    "test:integration": "node --env-file=../../.env --import tsx --test \"test/integration/**/*.int.test.ts\"",
-    "db:migrate": "node --env-file=../../.env node_modules/.bin/drizzle-kit migrate",
-    "db:check": "node --env-file=../../.env --import tsx src/db/migrate.ts"
+    "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/server.ts",
+    "start": "npm run build:ts && node --env-file-if-exists=../../.env dist/server.js",
+    "test": "node --env-file-if-exists=../../.env --import tsx --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "test:unit": "node --env-file-if-exists=../../.env --import tsx --test \"src/**/*.test.ts\"",
+    "test:integration": "node --env-file-if-exists=../../.env --import tsx --test \"test/integration/**/*.int.test.ts\"",
+    "db:migrate": "drizzle-kit migrate",
+    "db:check": "node --env-file-if-exists=../../.env --import tsx src/db/migrate.ts"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "@types/pg": "^8.11.0",
+    "dotenv": "^16.6.1",
     "drizzle-kit": "^0.30.0",
     "fastify-tsconfig": "^3.0.0",
     "tsx": "^4.21.0",

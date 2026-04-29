@@ -1,6 +1,6 @@
 # Story 1.5: `GET /todos` endpoint with full plugin stack and observability
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -625,6 +625,40 @@ So that the read path is complete, hardened, and diagnosable before any UI consu
   - [x] Commit message: `feat(api): GET /todos with full plugin stack and observability (Story 1.5)`
   - [x] **Do NOT** stage anything in `apps/web/`, `packages/shared/`, or other root configs — this story is API-internal. If `git status` shows surprises, investigate before staging.
 
+### Review Findings (AI)
+
+_Code review run 2026-04-29 (commit `727cbad`). Three parallel layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor. Two High findings empirically verified live (`db:migrate` script broken; production `start` ESM/CJS mismatch — the latter dismissed after `tsc` emit verified as ESM-correct, but a related `--env-file` gap surfaced)._
+
+**Decision resolved (1):**
+
+- [x] [Review][Decision] **`trustProxy: true` is too permissive — enables trivial `X-Forwarded-For`-spoofed rate-limit bypass** [apps/api/src/server.ts] → **resolved by adding an explicit v1-assumption comment in `server.ts`** at the `trustProxy: true` line. Rate-limit is best-effort in v1; tighten to a CIDR allow-list or hop count in Story 1.11 deployment hardening once the platform's proxy topology is pinned. Sources: blind+edge.
+
+**Patches (actionable now):**
+
+- [x] [Review][Patch] **`db:migrate` script broken** [apps/api/package.json:14] — `node --env-file=../../.env node_modules/.bin/drizzle-kit migrate` fails: `node_modules/.bin/drizzle-kit` doesn't exist at the workspace level (npm hoisted to root); even if it did, passing it as Node's script argument is wrong. Fix: revert to `"db:migrate": "drizzle-kit migrate"` (the npm-script PATH includes hoisted `.bin`) AND add `import 'dotenv/config'` (or equivalent path-aware load) at top of `apps/api/drizzle.config.ts` so DATABASE_URL is loaded for the standalone CLI. Empirically verified live: command exits non-zero. Source: blind.
+- [x] [Review][Patch] **All scripts hard-fail when `.env` is absent** [apps/api/package.json:9-15] — `--env-file=../../.env` ENOENTs in CI/Docker/fresh-checkout where `.env` doesn't exist. Fix: switch every script to `--env-file-if-exists=../../.env` (Node 22+; verified available on this Node 24). `start` becomes resilient for production where the platform injects env vars directly. Source: blind+edge.
+- [x] [Review][Patch] **AC #4 literal log-field names not emitted** [apps/api/src/server.ts:14-19] — AC #4 and architecture §Communication Patterns mandate `{ requestId, method, path, statusCode, durationMs }` as direct log keys. Implementation only renames `reqId → requestId` via `requestIdLogLabel`; other fields are emitted as `req.method`, `req.url`, `res.statusCode`, `responseTime` (nested + different names). Fix: add Pino `serializers` for `req`/`res` to flatten/rename, plus a `formatters.log` to map `responseTime` → `durationMs`. Update `buildTestApp.ts` similarly. Source: blind+auditor.
+- [x] [Review][Patch] **AC #8 (500 envelope + error log) has zero direct test** [apps/api/test/integration/] — No route ever throws in any test; `setErrorHandler` code is unexecuted. Story Task 12 explicitly suggested the workaround: register a `/internal-test/throw` route in `buildTestApp` (gated to test env) and assert envelope + log. Dev punted to Story 1.6. Add the test now: it's ~15 lines and covers the AC the dev claimed satisfied. Source: auditor.
+- [x] [Review][Patch] **`resetTodos()` wipes table without DB-target guard** [apps/api/test/integration/helpers/seedDb.ts:5] — `db.delete(todos)` runs against whatever `DATABASE_URL` resolves to; misconfigured `.env` pointing at a shared/staging/prod DB plus `npm run test:integration` is a data-loss event. Fix: refuse to run if `process.env.NODE_ENV === 'production'` OR if URL host doesn't match a localhost/test-pattern. Source: blind.
+- [x] [Review][Patch] **AC #2 (CORS reject path) not verified** [apps/api/test/integration/todos.int.test.ts] — Task 12's deferral rationale ("hard to assert with `app.inject()`") is wrong: `app.inject` does send `Origin` headers and the CORS plugin runs. Add a test that injects `Origin: http://attacker.example.com` against `OPTIONS /todos` and asserts no `access-control-allow-origin` header is present (or that the response is rejected). Source: auditor.
+- [x] [Review][Patch] **Pool error-listener leak across `buildApp` calls** [apps/api/src/plugins/db.ts:8-10] — `pool.on('error', ...)` is added on every plugin registration; pool is module-singleton. ~10 buildApp calls in one process triggers MaxListenersExceededWarning. Fix: store the listener reference and `pool.off('error', listener)` in the existing onClose hook. Source: edge.
+- [x] [Review][Patch] **Signal handlers re-enter without idempotence guard or error catch** [apps/api/src/server.ts:23-29] — Both SIGINT/SIGTERM handlers call `await app.close(); process.exit(0)`. Double signal → second `app.close()` rejects (Fastify forbids double-close) → unhandled rejection. If `app.close()` itself rejects, `process.exit(0)` never runs. Fix: `let closing = false` guard; `try/catch` around close; on catch, `app.log.error(err); process.exit(1)`. Source: blind+edge.
+- [x] [Review][Patch] **`setErrorHandler` warns on every 4xx (validation 400s noisy)** [apps/api/src/app.ts:33-36] — `req.log.warn({ err }, 'request error')` fires for every Zod validation 400, every 404. Production log volume / cost concern. Fix: split — `info` for 4xx, `warn`/`error` for 5xx. Source: blind.
+- [x] [Review][Patch] **`requestContext.set('reqId')` and `RequestContextData` augmentation are dead code** [apps/api/src/plugins/requestContext.ts:8-10,17-21] — Pino mixin (only consumer of `requestContext.get('reqId')`) was removed in favor of `requestIdLogLabel`. The set + ambient-type augmentation have no reader; AsyncLocalStorage cost paid for nothing. Fix: delete the set call, the `RequestContextData` augmentation, and the unused `requestContext` import (keep the `fastifyRequestContext` plugin registration for forward-compat with future code that needs ALS). Source: blind+edge+auditor.
+- [x] [Review][Patch] **`seedTodos` shared `new Date()` causes nondeterministic order between rows** [apps/api/test/integration/helpers/seedDb.ts:14-22] — Multiple rows seeded in one `seedTodos([...])` call without explicit `createdAt` get the same `new Date()` timestamp; tiebreaker is `id ASC` over random UUIDs → flaky tests. Fix: in the helper, give each row a deterministic offset by default (e.g., `Date.now() + index * 1`). Source: edge.
+- [x] [Review][Patch] **`CORS_ORIGIN` whitespace/trailing-slash silently rejects browser preflight** [apps/api/src/plugins/cors.ts:7] — `@fastify/cors` does exact-string match. `CORS_ORIGIN='  http://localhost:3000  '` or `CORS_ORIGIN='http://localhost:3000/'` passes env validation (`minLength: 1`) but every browser request fails preflight invisibly. Fix: trim+strip-trailing-slash when reading `app.config.CORS_ORIGIN`, OR tighten the JSON Schema with a `pattern` constraint. Source: edge.
+- [x] [Review][Patch] **No validation of inbound `x-request-id` (log-injection / log-forging vector)** [apps/api/src/server.ts:7-9] — `requestIdHeader: 'x-request-id'` makes Fastify accept the header verbatim. Hostile content (e.g., `<script>...`, multi-line, 8KB string) gets stamped into every log line and echoed back via the `onSend` hook. Fix: in `genReqId`, when an inbound header exists, accept it only if it matches a UUID-shape regex (or limited `[A-Za-z0-9-]{1,64}` charset); otherwise generate. Source: edge.
+
+**Deferred (real, but not blocking 1.5; tracked in [deferred-work.md](deferred-work.md)):**
+
+- [x] [Review][Defer] **Pool singleton can't survive `app.close()` in multi-instance scenarios** [apps/api/src/db/client.ts:11] — pool is module-singleton; `pool.end()` permanently disables it. 1.5's tests use one `buildTestApp()` per `node:test` worker → fine. Re-architect when multi-build-per-process arrives. Source: edge.
+- [x] [Review][Defer] **`onSend` x-request-id doesn't check headers-sent state** [apps/api/src/plugins/requestContext.ts:11-13] — risk dormant until streaming endpoints land. Revisit when one does. Source: edge.
+- [x] [Review][Defer] **AC #3 (429 envelope) direct test** — story Task 12 explicitly cuts; trust the plugin's own tests. Story 1.11 (deployment-hardening) is the natural place to revisit. Source: auditor.
+- [x] [Review][Defer] **No HTTP header-size cap (`bodyLimit` doesn't help)** [apps/api/src/server.ts:10] — Fastify defaults are reasonable; no abuse observed. Revisit if needed. Source: edge.
+- [x] [Review][Defer] **Logger `LOG_LEVEL` bypasses `@fastify/env` validation** [apps/api/src/server.ts:12] — Fastify is constructed before `@fastify/env` registers, so the JSON-Schema enum on `LOG_LEVEL` doesn't apply. Pino throws on truly invalid levels (loud failure, just not "fail-fast"). Fix would require pre-validating env outside `buildApp` — adds duplication; defer until value clearly outweighs cost. Source: blind.
+
+**Dismissed (8):** Acceptance Auditor verifications of compliance (correct v4-plugin pin, correct ESM switch reasoning, correct tsx adoption, correct light-DI matching spec, deferred-1.4-items verified, no out-of-scope additions, all bodyLimit/trustProxy/exposedHeaders/plugin-order checks pass) and the Blind Hunter's `start` ESM/CJS finding (verified false: `tsc` emits proper ESM under `"type": "module"` + `module: NodeNext`).
+
 ## Dev Notes
 
 ### Where this story sits
@@ -959,3 +993,4 @@ Remaining deferred items (lazy `client.ts` init, malformed-`DATABASE_URL` guard,
 | ---- | ------ | ------ |
 | 2026-04-29 | Claude Opus 4.7 (Create-Story) | Story 1.5 contexted; status `backlog` → `ready-for-dev`. |
 | 2026-04-29 | Claude Opus 4.7 (Dev) | Story 1.5 implemented; status `ready-for-dev` → `review`. All 15 tasks complete; 6/6 apps/api tests pass; 25/25 packages/shared tests pass; lint + tsc clean. |
+| 2026-04-29 | Claude Opus 4.7 (Code Review) | Code review applied — 13 patches resolved (incl. 5 new test cases for ACs #2, #4, #8 and the hostile x-request-id case), 5 deferred to [deferred-work.md](deferred-work.md), 8 dismissed. Status: `review` → `done`. 11/11 apps/api tests pass; 25/25 packages/shared tests pass; lint + tsc clean. |

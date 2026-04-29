@@ -5,11 +5,17 @@ export default fp(
   async (app) => {
     app.decorate('db', db);
 
-    pool.on('error', (err) => {
+    // Idle-client errors must not crash the process — pg emits these on
+    // dropped connections. Logged at warn; pool will reconnect on next acquire.
+    const onPoolError = (err: Error): void => {
       app.log.warn({ err }, 'pg idle client error');
-    });
+    };
+    pool.on('error', onPoolError);
 
+    // Detach + close on Fastify shutdown so re-builds in the same process
+    // (test workers, hot-reload) don't accumulate listeners on the singleton pool.
     app.addHook('onClose', async () => {
+      pool.off('error', onPoolError);
       await pool.end();
     });
   },
