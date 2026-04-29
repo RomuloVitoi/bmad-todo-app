@@ -1,6 +1,6 @@
 # Story 2.3: DELETE /todos/:id endpoint
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -59,8 +59,8 @@ So that clients can remove any todo from the shared list (FR25).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add `deleteTodoById()` query helper to the DB client (AC: #1, #2, #4, #5)**
-  - [ ] Edit [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts):
+- [x] **Task 1: Add `deleteTodoById()` query helper to the DB client (AC: #1, #2, #4, #5)**
+  - [x] Edit [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts):
 
     ```ts
     // ...existing imports (`eq` already imported by Story 2.2)...
@@ -71,16 +71,16 @@ So that clients can remove any todo from the shared list (FR25).
     };
     ```
 
-  - [ ] **Why `Promise<boolean>` (not `Promise<Todo | null>`)** — the route handler needs only "deleted? yes/no" to decide between 204 and 404. Returning the deleted entity would leak DB shape into a response that, by HTTP spec, must be empty (204). Returning `boolean` keeps the helper semantically tight.
-  - [ ] **Why `.returning({ id: todos.id })` (projected, not bare `.returning()`)** — we only need to count rows; selecting one column is the cheapest projection on the wire and avoids accidentally hydrating any future columns. Alternative `.returning()` (all columns) works but is wasteful for a delete.
-  - [ ] **Why check `rows.length === 1`** — `id` is the table's primary key, so the affected-row count is 0 or 1. The strict `=== 1` (rather than `>= 1`) is a deliberate invariant — if Postgres ever returned 2 it would mean a primary-key violation upstream, and we want a loud failure rather than silent acceptance. (Spec watch-out from Story 2.2 review: same defensive thinking.)
-  - [ ] **Why no `eq` import line is needed** — Story 2.2 already added `import { asc, eq } from 'drizzle-orm';` to this file. Reuse.
-  - [ ] **Why `id` is trusted** — the route's `params` schema validates `id` as a UUID before invoking this helper (Task 2). Drizzle parameterises `eq()`; no SQL-injection surface.
-  - [ ] **Why no transaction** — single `DELETE ... WHERE id = $1 RETURNING id` is atomic by Postgres row-level semantics. AC #5 explicitly forbids transactions and explicit locks. Two concurrent DELETEs against the same row serialize on the row lock; one wins (returns the row, becomes 204), one observes 0 affected rows (returns false, becomes 404). This IS the spec.
-  - [ ] **Watch-out:** Do NOT use `.execute()` without `.returning()`. Drizzle's bare `.execute()` does not surface the affected-row count in a portable way; `.returning(...)` does, and Postgres natively supports `DELETE ... RETURNING`.
+  - [x] **Why `Promise<boolean>` (not `Promise<Todo | null>`)** — the route handler needs only "deleted? yes/no" to decide between 204 and 404. Returning the deleted entity would leak DB shape into a response that, by HTTP spec, must be empty (204). Returning `boolean` keeps the helper semantically tight.
+  - [x] **Why `.returning({ id: todos.id })` (projected, not bare `.returning()`)** — we only need to count rows; selecting one column is the cheapest projection on the wire and avoids accidentally hydrating any future columns. Alternative `.returning()` (all columns) works but is wasteful for a delete.
+  - [x] **Why check `rows.length === 1`** — `id` is the table's primary key, so the affected-row count is 0 or 1. The strict `=== 1` (rather than `>= 1`) is a deliberate invariant — if Postgres ever returned 2 it would mean a primary-key violation upstream, and we want a loud failure rather than silent acceptance. (Spec watch-out from Story 2.2 review: same defensive thinking.)
+  - [x] **Why no `eq` import line is needed** — Story 2.2 already added `import { asc, eq } from 'drizzle-orm';` to this file. Reuse.
+  - [x] **Why `id` is trusted** — the route's `params` schema validates `id` as a UUID before invoking this helper (Task 2). Drizzle parameterises `eq()`; no SQL-injection surface.
+  - [x] **Why no transaction** — single `DELETE ... WHERE id = $1 RETURNING id` is atomic by Postgres row-level semantics. AC #5 explicitly forbids transactions and explicit locks. Two concurrent DELETEs against the same row serialize on the row lock; one wins (returns the row, becomes 204), one observes 0 affected rows (returns false, becomes 404). This IS the spec.
+  - [x] **Watch-out:** Do NOT use `.execute()` without `.returning()`. Drizzle's bare `.execute()` does not surface the affected-row count in a portable way; `.returning(...)` does, and Postgres natively supports `DELETE ... RETURNING`.
 
-- [ ] **Task 2: Add DELETE handler to the existing todos routes plugin (AC: #1, #2, #3, #6)**
-  - [ ] Edit [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — extend the existing `todosRoutes` plugin:
+- [x] **Task 2: Add DELETE handler to the existing todos routes plugin (AC: #1, #2, #3, #6)**
+  - [x] Edit [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — extend the existing `todosRoutes` plugin:
 
     ```ts
     import {
@@ -138,18 +138,18 @@ So that clients can remove any todo from the shared list (FR25).
     };
     ```
 
-  - [ ] **Why bind the option name to `remove`** — `delete` is a JavaScript reserved word in strict mode (and a property accessor on objects), so `const delete = ...` is a syntax error. Naming the local `remove` (alias for `deleteTodoById`) keeps the handler readable. Keep the option name `deleteTodoById` to mirror the function name in the DI seam (consistent with Stories 2.1 and 2.2).
-  - [ ] **Why `response: { 204: z.null() }`** — `fastify-type-provider-zod@^4` requires a Zod schema for every declared response status. `z.null()` declares "no body / null body" and is the correct contract for 204. Fastify itself enforces the HTTP rule that 204 responses must not have a body — `reply.code(204).send(null)` and `reply.code(204); return null;` both produce zero-length bodies with no `content-type` header.
-  - [ ] **Why `return null` (not `return reply.send()`)** — both produce a 204 with no body, but `return null` keeps the handler async-await-clean and matches the return-value style used by the GET / POST / PATCH handlers in the same file. Fastify's response-schema serializer accepts `null` against `z.null()` without complaint.
-  - [ ] **Why no 400/404 response schema declaration** — same architecture rule as Stories 2.1 and 2.2 ([architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401)) — Zod-validation 400s and `reply.notFound()` 404s use the sensible envelope automatically. Declaring those schemas in the route object would force every error path through the schema serializer and is unnecessary verbosity.
-  - [ ] **Why reuse `TodoIdParamsSchema`** — Story 2.2 declared this inline in the same file. Do NOT redeclare; do NOT export to `packages/shared`. The path-param schema is an internal contract (URL-segment validation); it is not part of the wire payload.
-  - [ ] **Why `tags: ['todos']`** — pre-declared in [apps/api/src/plugins/swagger.ts:38](../../apps/api/src/plugins/swagger.ts#L38) so DELETE groups under the same Swagger UI section as GET/POST/PATCH.
-  - [ ] **Watch-out:** Do NOT wrap the handler in `try/catch`. Zod validates `params` BEFORE the handler runs. The global `setErrorHandler` ([app.ts:40-52](../../apps/api/src/app.ts#L40-L52)) catches anything that escapes.
-  - [ ] **Watch-out:** Do NOT add a `body:` schema. DELETE requests should ignore any payload the client sends; declaring no body schema lets Fastify accept any/no body without 400-ing.
-  - [ ] **Watch-out:** Place the DELETE block AFTER the PATCH block in the same plugin function. Plugin-registration order (`setValidatorCompiler` → `swagger` → `todosRoutes` in [app.ts:22-37](../../apps/api/src/app.ts#L22-L37)) is unchanged.
+  - [x] **Why bind the option name to `remove`** — `delete` is a JavaScript reserved word in strict mode (and a property accessor on objects), so `const delete = ...` is a syntax error. Naming the local `remove` (alias for `deleteTodoById`) keeps the handler readable. Keep the option name `deleteTodoById` to mirror the function name in the DI seam (consistent with Stories 2.1 and 2.2).
+  - [x] **Why `response: { 204: z.null() }`** — `fastify-type-provider-zod@^4` requires a Zod schema for every declared response status. `z.null()` declares "no body / null body" and is the correct contract for 204. Fastify itself enforces the HTTP rule that 204 responses must not have a body — `reply.code(204).send(null)` and `reply.code(204); return null;` both produce zero-length bodies with no `content-type` header.
+  - [x] **Why `return null` (not `return reply.send()`)** — both produce a 204 with no body, but `return null` keeps the handler async-await-clean and matches the return-value style used by the GET / POST / PATCH handlers in the same file. Fastify's response-schema serializer accepts `null` against `z.null()` without complaint.
+  - [x] **Why no 400/404 response schema declaration** — same architecture rule as Stories 2.1 and 2.2 ([architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401)) — Zod-validation 400s and `reply.notFound()` 404s use the sensible envelope automatically. Declaring those schemas in the route object would force every error path through the schema serializer and is unnecessary verbosity.
+  - [x] **Why reuse `TodoIdParamsSchema`** — Story 2.2 declared this inline in the same file. Do NOT redeclare; do NOT export to `packages/shared`. The path-param schema is an internal contract (URL-segment validation); it is not part of the wire payload.
+  - [x] **Why `tags: ['todos']`** — pre-declared in [apps/api/src/plugins/swagger.ts:38](../../apps/api/src/plugins/swagger.ts#L38) so DELETE groups under the same Swagger UI section as GET/POST/PATCH.
+  - [x] **Watch-out:** Do NOT wrap the handler in `try/catch`. Zod validates `params` BEFORE the handler runs. The global `setErrorHandler` ([app.ts:40-52](../../apps/api/src/app.ts#L40-L52)) catches anything that escapes.
+  - [x] **Watch-out:** Do NOT add a `body:` schema. DELETE requests should ignore any payload the client sends; declaring no body schema lets Fastify accept any/no body without 400-ing.
+  - [x] **Watch-out:** Place the DELETE block AFTER the PATCH block in the same plugin function. Plugin-registration order (`setValidatorCompiler` → `swagger` → `todosRoutes` in [app.ts:22-37](../../apps/api/src/app.ts#L22-L37)) is unchanged.
 
-- [ ] **Task 3: Extend integration tests in todos.int.test.ts (AC: #1, #2, #3, #4, #7)**
-  - [ ] Edit [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — append DELETE test cases after the existing PATCH block. Suggested cases:
+- [x] **Task 3: Extend integration tests in todos.int.test.ts (AC: #1, #2, #3, #4, #7)**
+  - [x] Edit [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — append DELETE test cases after the existing PATCH block. Suggested cases:
 
     ```ts
     test('DELETE /todos/:id — 204 with empty body, row removed (AC #1)', async () => {
@@ -220,14 +220,14 @@ So that clients can remove any todo from the shared list (FR25).
     });
     ```
 
-  - [ ] **Why `assert.equal(res.body, '')`** — Fastify's `inject()` returns `body` as an empty string for 204 responses (no bytes). Asserting on the string form is more explicit than `assert.equal(res.payload.length, 0)` and forward-compatible with future Fastify versions.
-  - [ ] **Why the "does not delete other rows" test** — guards against a regression where the `WHERE id = $1` clause is dropped and the helper TRUNCATEs the table. AC #1's "removes the row" implies "removes only that row," and a single positive test does not prove the negative.
-  - [ ] **Why no test for `DELETE /todos/<id>` body content** — DELETE requests may carry a body (RFC 7231 doesn't forbid it), and the route schema deliberately does not declare a body validator (Task 2 watch-out), so Fastify will accept and ignore any payload. Adding a test for "DELETE with body" is testing Fastify's parser, not our endpoint.
-  - [ ] **Watch-out:** `beforeEach(resetTodos)` in [todos.int.test.ts:17-20](../../apps/api/test/integration/todos.int.test.ts#L17-L20) ensures each test starts empty. The "does not delete other rows" test seeds two rows via POST; that's fine because each `app.inject` is a real handler invocation.
-  - [ ] **Watch-out:** Do NOT pin the 400/404 `message` content (same trade-off as Stories 2.1 and 2.2 — Zod messages can shift across minor versions).
+  - [x] **Why `assert.equal(res.body, '')`** — Fastify's `inject()` returns `body` as an empty string for 204 responses (no bytes). Asserting on the string form is more explicit than `assert.equal(res.payload.length, 0)` and forward-compatible with future Fastify versions.
+  - [x] **Why the "does not delete other rows" test** — guards against a regression where the `WHERE id = $1` clause is dropped and the helper TRUNCATEs the table. AC #1's "removes the row" implies "removes only that row," and a single positive test does not prove the negative.
+  - [x] **Why no test for `DELETE /todos/<id>` body content** — DELETE requests may carry a body (RFC 7231 doesn't forbid it), and the route schema deliberately does not declare a body validator (Task 2 watch-out), so Fastify will accept and ignore any payload. Adding a test for "DELETE with body" is testing Fastify's parser, not our endpoint.
+  - [x] **Watch-out:** `beforeEach(resetTodos)` in [todos.int.test.ts:17-20](../../apps/api/test/integration/todos.int.test.ts#L17-L20) ensures each test starts empty. The "does not delete other rows" test seeds two rows via POST; that's fine because each `app.inject` is a real handler invocation.
+  - [x] **Watch-out:** Do NOT pin the 400/404 `message` content (same trade-off as Stories 2.1 and 2.2 — Zod messages can shift across minor versions).
 
-- [ ] **Task 4: Append parallel-delete test to concurrency.int.test.ts (AC: #5, #7)**
-  - [ ] Edit [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts) — append a new test after the existing PATCH-LWW test:
+- [x] **Task 4: Append parallel-delete test to concurrency.int.test.ts (AC: #5, #7)**
+  - [x] Edit [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts) — append a new test after the existing PATCH-LWW test:
 
     ```ts
     test('DELETE /todos/:id — concurrent deletes: exactly one 204, one 404, row removed once (AC #5)', async () => {
@@ -258,20 +258,20 @@ So that clients can remove any todo from the shared list (FR25).
     });
     ```
 
-  - [ ] **Why `[a.statusCode, b.statusCode].sort()`** — the AC requires "one 204 and one 404," NOT a specific order. Sorting normalizes the assertion against the non-deterministic winner identity. `[204, 404].sort()` is `[204, 404]` (ASCII ordering of the two-digit numbers — 2 < 4).
-  - [ ] **Why this lives in `concurrency.int.test.ts` and not `todos.int.test.ts`** — same architectural rationale as Story 2.2's PATCH-LWW test ([architecture.md:597](../../_bmad-output/planning-artifacts/architecture.md#L597) — "concurrency.int.test.ts" is pre-named for race tests). Adding a second case to the file is intentional.
-  - [ ] **Why this test is robust under `--test-concurrency=1`** — Story 2.2 added `--test-concurrency=1` to the integration script (preventing cross-file `beforeEach(resetTodos)` from racing the LWW test). That setting still applies here. Within this file, `beforeEach(resetTodos)` runs cleanly between the two cases (LWW PATCH and concurrent DELETE) — no sharing of state.
-  - [ ] **Watch-out:** Do NOT add `await new Promise(r => setTimeout(r, 0))` or any artificial delay between the two `app.inject` calls. The point of `Promise.all` is event-loop parallelism; introducing a delay would serialise the test and defeat the proof.
-  - [ ] **Watch-out:** Do NOT extend to N>2 parallel DELETEs in this story. Larger fan-out is a separate proof and adds flakiness on slow CI machines. Same rationale as Story 2.2's two-PATCH limit.
+  - [x] **Why `[a.statusCode, b.statusCode].sort()`** — the AC requires "one 204 and one 404," NOT a specific order. Sorting normalizes the assertion against the non-deterministic winner identity. `[204, 404].sort()` is `[204, 404]` (ASCII ordering of the two-digit numbers — 2 < 4).
+  - [x] **Why this lives in `concurrency.int.test.ts` and not `todos.int.test.ts`** — same architectural rationale as Story 2.2's PATCH-LWW test ([architecture.md:597](../../_bmad-output/planning-artifacts/architecture.md#L597) — "concurrency.int.test.ts" is pre-named for race tests). Adding a second case to the file is intentional.
+  - [x] **Why this test is robust under `--test-concurrency=1`** — Story 2.2 added `--test-concurrency=1` to the integration script (preventing cross-file `beforeEach(resetTodos)` from racing the LWW test). That setting still applies here. Within this file, `beforeEach(resetTodos)` runs cleanly between the two cases (LWW PATCH and concurrent DELETE) — no sharing of state.
+  - [x] **Watch-out:** Do NOT add `await new Promise(r => setTimeout(r, 0))` or any artificial delay between the two `app.inject` calls. The point of `Promise.all` is event-loop parallelism; introducing a delay would serialise the test and defeat the proof.
+  - [x] **Watch-out:** Do NOT extend to N>2 parallel DELETEs in this story. Larger fan-out is a separate proof and adds flakiness on slow CI machines. Same rationale as Story 2.2's two-PATCH limit.
 
-- [ ] **Task 5: Verify /docs renders the DELETE endpoint (AC: #6)**
-  - [ ] Start the dev stack: `npm run dev` (from repo root).
-  - [ ] Open `http://localhost:4000/docs`. Confirm:
+- [x] **Task 5: Verify /docs renders the DELETE endpoint (AC: #6)**
+  - [x] Start the dev stack: `npm run dev` (from repo root).
+  - [x] Open `http://localhost:4000/docs`. Confirm:
     - The `todos` tag section now lists `GET /todos`, `POST /todos`, `PATCH /todos/{id}`, AND `DELETE /todos/{id}`.
     - DELETE has a path parameter `id` (uuid format) and NO request body schema.
     - The 204 response is shown explicitly (no body).
     - The description mentions 404 (missing) and 400 (bad UUID).
-  - [ ] Fetch `http://localhost:4000/docs/json` and grep for the DELETE operation:
+  - [x] Fetch `http://localhost:4000/docs/json` and grep for the DELETE operation:
 
     ```bash
     curl -s http://localhost:4000/docs/json \
@@ -283,22 +283,22 @@ So that clients can remove any todo from the shared list (FR25).
     - `parameters[0].in: 'path'`, `parameters[0].name: 'id'`, `parameters[0].schema.format: 'uuid'`
     - `responses['204']` declared
     - NO `requestBody` field
-  - [ ] **No code changes required** — `jsonSchemaTransform` from `fastify-type-provider-zod@^4` derives the params/response schemas automatically.
+  - [x] **No code changes required** — `jsonSchemaTransform` from `fastify-type-provider-zod@^4` derives the params/response schemas automatically.
 
-- [ ] **Task 6: Sanity gates**
-  - [ ] `npm run lint` — must report 0 warnings, 0 errors.
-  - [ ] `npm run typecheck` — must report 0 errors. The handler's `req.params` should auto-type as `{ id: string }`.
-  - [ ] `npm run test` — runs unit tests across all workspaces (no DB required). Must pass.
-  - [ ] `npm run test:integration --workspace apps/api` — runs all integration tests against a live local Postgres. New test counts: +5 in `todos.int.test.ts`, +1 in `concurrency.int.test.ts`. Must pass.
-  - [ ] **Run-three rule** — execute the integration suite three consecutive times before declaring Task 6 done. The new concurrent-DELETE test is the second race-y test in the file; verify both LWW (Story 2.2) and concurrent-DELETE (this story) pass on three back-to-back runs.
-  - [ ] **No new lint/typecheck rules required.** The existing `eslint.config.mjs` and `tsconfig.base.json` cover everything.
+- [x] **Task 6: Sanity gates**
+  - [x] `npm run lint` — must report 0 warnings, 0 errors.
+  - [x] `npm run typecheck` — must report 0 errors. The handler's `req.params` should auto-type as `{ id: string }`.
+  - [x] `npm run test` — runs unit tests across all workspaces (no DB required). Must pass.
+  - [x] `npm run test:integration --workspace apps/api` — runs all integration tests against a live local Postgres. New test counts: +5 in `todos.int.test.ts`, +1 in `concurrency.int.test.ts`. Must pass.
+  - [x] **Run-three rule** — execute the integration suite three consecutive times before declaring Task 6 done. The new concurrent-DELETE test is the second race-y test in the file; verify both LWW (Story 2.2) and concurrent-DELETE (this story) pass on three back-to-back runs.
+  - [x] **No new lint/typecheck rules required.** The existing `eslint.config.mjs` and `tsconfig.base.json` cover everything.
 
-- [ ] **Task 7: Commit**
-  - [ ] Stage exactly:
+- [x] **Task 7: Commit**
+  - [x] Stage exactly:
     - **Modified:** [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts), [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts), [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts), [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts).
-  - [ ] Commit message: `feat(api): DELETE /todos/:id endpoint with concurrent-delete safety (Story 2.3)`
-  - [ ] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, or any `apps/web/**` file (Story 2.3 is API-only; web wiring lives in Story 2.7).
-  - [ ] Record commit hash in the Change Log when the user runs the commit.
+  - [x] Commit message: `feat(api): DELETE /todos/:id endpoint with concurrent-delete safety (Story 2.3)`
+  - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, or any `apps/web/**` file (Story 2.3 is API-only; web wiring lives in Story 2.7).
+  - [x] Record commit hash in the Change Log when the user runs the commit.
 
 ## Dev Notes
 
@@ -491,16 +491,53 @@ Story 2.2 review yielded six deferred items in [deferred-work.md](./deferred-wor
 
 ### Agent Model Used
 
-claude-opus-4-7 (1M context) — `/bmad-create-story` workflow.
+claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 
 ### Debug Log References
 
+- Lint: `npm run lint` — clean (0 warnings, 0 errors).
+- Typecheck: `npm run typecheck` — clean across `packages/shared`, `apps/api`, `apps/web`. `req.params.id` auto-typed as `string`.
+- Unit tests: `npm run test` — 48/48 passing. No regressions.
+- Integration tests: `npm --workspace apps/api run test:integration` — **39/39 passing** (33 pre-existing + 5 new DELETE cases in `todos.int.test.ts` + 1 new concurrent-DELETE case in `concurrency.int.test.ts`).
+- **Run-three rule satisfied:** integration suite executed three consecutive times — all 39/39 green on every run (durations ~3.4s, ~3.2s, ~3.2s). Both race tests (LWW PATCH from Story 2.2 and concurrent DELETE from this story) are stable.
+- /docs verification: started API via `npm --workspace apps/api run dev`, then `curl http://localhost:4000/docs/json | python3 -m json.tool`. Output confirmed:
+  - `paths['/todos/{id}']['delete']` exists, tagged `['todos']`.
+  - summary: `"Delete a todo by id"`.
+  - description mentions 204 success, 404 missing, 400 bad UUID.
+  - parameters: `id` with `format: uuid`, `required: true`, `in: path`.
+  - responses: `204` declared explicitly (`enum: ["null"], nullable: true` for the `z.null()` schema).
+  - `requestBody` key is **absent** from the operation — DELETE has no body, as required.
+
 ### Completion Notes List
 
+- All 7 ACs satisfied:
+  - **AC #1** (204 + empty body, row removed, no other rows touched): covered by two tests — happy path and "does not delete other rows."
+  - **AC #2** (404 with sensible envelope on valid-but-missing UUID): asserts `statusCode: 404, error: 'Not Found', message: <string>`.
+  - **AC #3** (400 on malformed UUID via Zod params validation): single test against `/todos/not-a-uuid`.
+  - **AC #4** (sequential double-delete returns 204 then 404): covered explicitly.
+  - **AC #5** (parallel double-delete: exactly one 204 + one 404, row removed once, no error): dedicated test in `concurrency.int.test.ts` with `[a.statusCode, b.statusCode].sort()` assertion. Stable across 3 consecutive runs.
+  - **AC #6** (`/docs` documents DELETE under `todos` tag with 204, no body, params): verified via live `/docs/json` inspection.
+  - **AC #7** (integration coverage in two files): 5 cases in `todos.int.test.ts`, 1 case appended to `concurrency.int.test.ts`.
+- Implementation matches the spec verbatim:
+  - `deleteTodoById(id) → Promise<boolean>` via `DELETE ... RETURNING { id }` and `rows.length === 1` invariant.
+  - DI seam `opts?.deleteTodoById ?? defaultDeleteTodoById`; local binding named `remove` (since `delete` is a reserved-word-like identifier).
+  - REUSED Story 2.2's `TodoIdParamsSchema` — no redeclaration.
+  - REUSED Story 2.2's `eq` import — no new drizzle-orm imports.
+  - `response: { 204: z.null() }` declares the 204 contract; handler returns `null`.
+  - Handler is `validate → call → 204-or-404`; no `try/catch`, no manual validation, no logging, no transaction, no advisory locks.
+- No spec deviations. The `apps/api/package.json` test-concurrency setting (added in Story 2.2) carries forward unchanged.
+- Out-of-scope items remained out of scope: no web changes, no migration, no `Idempotency-Key`, no soft-delete / `deleted_at`, no 410 Gone, no bulk DELETE, no audit log.
+
 ### File List
+
+- **Modified:** [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts) — added `deleteTodoById()` export (~7 LOC, no new imports — `eq` already imported by Story 2.2).
+- **Modified:** [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — added DELETE handler within existing `todosRoutes` plugin, added `defaultDeleteTodoById` import, extended `TodosRouteOptions` with optional `deleteTodoById`, bound local `remove` (~25 LOC).
+- **Modified:** [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — appended 5 DELETE integration test cases (~75 LOC).
+- **Modified:** [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts) — appended 1 concurrent-DELETE test (~32 LOC).
 
 ## Change Log
 
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 3 (DELETE /todos/:id with concurrent-delete safety, follows Stories 2.1 POST and 2.2 PATCH; closes Epic 2's API surface). |
+| 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–7 complete. DELETE /todos/:id live with reused `TodoIdParamsSchema`, `z.null()` 204 contract, sensible 404 envelope, single DELETE-RETURNING-id-projection (no transaction, no advisory locks). Integration suite 39/39 green on three consecutive runs. /docs documents DELETE under `todos` tag with 204 declared and no `requestBody` key. No spec deviations. Epic 2's API surface is now complete (GET, POST, PATCH, DELETE all live). Commit hash: `2ae5c02`. |

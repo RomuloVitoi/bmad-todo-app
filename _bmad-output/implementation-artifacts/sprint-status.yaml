@@ -61,6 +61,8 @@ last_updated: 2026-04-29
 # 2026-04-29: 2-2 in-progress → review (Dev-Story: PATCH /todos/:id endpoint + 9 integration tests inc. LWW; 48/48 unit + 33/33 integration green on 3 consecutive runs; /docs documents PATCH with verbatim LWW phrase; +1 spec deviation: --test-concurrency=1 added to test:integration)
 # 2026-04-29: 2-2 review → done (Code-Review: 1 decision ratified — package.json --test-concurrency=1 in-scope; 1 patch applied — body.id/body.text assertions on true→false PATCH test; 6 defers logged, 15 dismissed; Acceptance Auditor 8/8 ACs PASS)
 # 2026-04-29: 2-3 backlog → ready-for-dev (Create-Story: DELETE /todos/:id + concurrent-delete safety; reuses TodoIdParamsSchema + concurrency.int.test.ts from Story 2.2; ~150 LOC across 4 files, 0 new)
+# 2026-04-29: 2-3 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-04-29: 2-3 in-progress → review (Dev-Story: DELETE /todos/:id endpoint + 5 integration tests + 1 concurrent-DELETE; 48/48 unit + 39/39 integration green on 3 consecutive runs; /docs documents DELETE with 204 + no requestBody; no spec deviations; Epic 2 API surface complete)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -84,7 +86,7 @@ development_status:
   epic-2: in-progress
   2-1-post-todos-endpoint: done
   2-2-patch-todos-id-endpoint-with-lww-semantics: done
-  2-3-delete-todos-id-endpoint: ready-for-dev
+  2-3-delete-todos-id-endpoint: review
   2-4-reducer-extensions-for-optimistic-mutations: backlog
   2-5-create-todo-via-todoinput-full-vertical-slice: backlog
   2-6-toggle-completion-via-radix-checkbox: backlog
