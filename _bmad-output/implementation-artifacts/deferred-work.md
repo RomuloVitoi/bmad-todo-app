@@ -2,6 +2,13 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-3 (2026-04-29)
+
+### Story 2.3 — DELETE /todos/:id with concurrent-delete safety (commits `114056d..c46a3e4`)
+
+- **204 response: no assertion on `Content-Length` or `Content-Type` headers** — [apps/api/test/integration/todos.int.test.ts:108-112](../../apps/api/test/integration/todos.int.test.ts#L108-L112). The test asserts `res.body === ''` (sufficient for the practical case), but does not pin `content-length: 0` or absence of `content-type`. A future Fastify config drift that emits `Content-Type: application/json` with a `null` payload on 204 would still pass the body-empty check. Low risk — Fastify is well-behaved here — but worth tightening alongside future error-envelope work.
+- **`find(...) === undefined` tautology when array is empty** — [apps/api/test/integration/todos.int.test.ts:131-137,165-173](../../apps/api/test/integration/todos.int.test.ts) and [apps/api/test/integration/concurrency.int.test.ts:75-82](../../apps/api/test/integration/concurrency.int.test.ts#L75-L82). Post-DELETE round-trip GET asserts the row is missing via `find(...) === undefined`, but if the GET ever returned `[]` for an unrelated reason, the assertion would silently pass. Adding an `assert.ok(todos.some(t => t.id === id))` precondition before the DELETE would prove "row was there → row was removed" rather than just "row is not there now." Test hardening, not a current bug.
+
 ## Deferred from: code review of story 2-2 (2026-04-29)
 
 ### Story 2.2 — PATCH /todos/:id with LWW semantics (commits `ab93e19..32eec9c`)

@@ -56,5 +56,12 @@ export const deleteTodoById = async (id: string): Promise<boolean> => {
     .delete(todos)
     .where(eq(todos.id, id))
     .returning({ id: todos.id });
+  if (rows.length > 1) {
+    // `id` is a PRIMARY KEY column; a single-row WHERE clause can affect 0 or
+    // 1 rows. Receiving >1 means the upstream invariant is violated (e.g.,
+    // schema drift, broken migration). Surface loudly via 500 + global error
+    // handler instead of silently masking as 404.
+    throw new Error(`deleteTodoById: expected 0 or 1 row, got ${rows.length}`);
+  }
   return rows.length === 1;
 };

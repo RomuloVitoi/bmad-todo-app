@@ -1,6 +1,6 @@
 # Story 2.3: DELETE /todos/:id endpoint
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -541,3 +541,17 @@ claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 3 (DELETE /todos/:id with concurrent-delete safety, follows Stories 2.1 POST and 2.2 PATCH; closes Epic 2's API surface). |
 | 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–7 complete. DELETE /todos/:id live with reused `TodoIdParamsSchema`, `z.null()` 204 contract, sensible 404 envelope, single DELETE-RETURNING-id-projection (no transaction, no advisory locks). Integration suite 39/39 green on three consecutive runs. /docs documents DELETE under `todos` tag with 204 declared and no `requestBody` key. No spec deviations. Epic 2's API surface is now complete (GET, POST, PATCH, DELETE all live). Commit hash: `2ae5c02`. |
+| 2026-04-29 | Code review via `/bmad-code-review` on commits `9c57f6e..HEAD`. Triage: 0 decision-needed, 1 patch applied, 2 deferred, 18 dismissed. Acceptance Auditor: all 7 ACs PASS. Patch: added `if (rows.length > 1) throw` guard to `deleteTodoById()` — closes spec-vs-code drift where the documented "loud failure on PK invariant violation" was silently masked as 404. Status: review → done. |
+
+## Review Findings
+
+Code review on commits `9c57f6e..HEAD` (`114056d` + `2ae5c02` + `c46a3e4`, 2026-04-29). Triage: **0 decision-needed, 1 patch, 2 deferred, 18 dismissed**. Acceptance Auditor: **all 7 ACs PASS** at diff level — every spec Watch-out honored, every architecture rule satisfied, every PRD requirement met. The "no spec deviations" claim is accurate.
+
+### Patches (unresolved action items)
+
+- [x] `[Review][Patch]` **`rows.length === 1` silently returns `false` on `> 1` rows — spec narrative promises "loud failure" but code is silent** — [apps/api/src/db/client.ts:42-47](../../apps/api/src/db/client.ts#L42-L47). Story spec at line 113 of [2-3-delete-todos-id-endpoint.md](./2-3-delete-todos-id-endpoint.md) says: *"if Postgres ever returned 2 it would mean a primary-key violation upstream, and we want a loud failure rather than silent acceptance."* But `return rows.length === 1` returns `false` on N>1, which the route translates to a silent 404 — the opposite of "loud failure." A primary-key violation upstream would silently surface as a missing-row 404, hiding real data corruption. Fix: throw on `> 1` and return only on `0`/`1`. Single-line change matching the documented invariant. **Resolution:** added `if (rows.length > 1) throw new Error(...)` guard with explanatory comment about the PK invariant. Helper now throws on schema drift; global `setErrorHandler` surfaces 500. Lint/typecheck clean; integration 39/39 green post-edit.
+
+### Deferred (real but pre-existing patterns or low-risk hardening)
+
+- [x] `[Review][Defer]` **204 response: no assertion on `Content-Length` or `Content-Type` headers** — [apps/api/test/integration/todos.int.test.ts:108-112](../../apps/api/test/integration/todos.int.test.ts#L108-L112). The test asserts `res.body === ''` (sufficient for the practical case), but does not pin `content-length: 0` or absence of `content-type`. A future Fastify config drift that emits `Content-Type: application/json` with a `null` payload on 204 would still pass the body-empty check. Low risk — Fastify is well-behaved here — but worth tightening alongside future error-envelope work.
+- [x] `[Review][Defer]` **`find(...) === undefined` is tautological when the array is empty** — [apps/api/test/integration/todos.int.test.ts:131-137,165-173](../../apps/api/test/integration/todos.int.test.ts) and [apps/api/test/integration/concurrency.int.test.ts:75-82](../../apps/api/test/integration/concurrency.int.test.ts#L75-L82). The post-DELETE round-trip GET asserts the row is missing via `find(...) === undefined`, but if the GET ever returned `[]` for an unrelated reason, the assertion would silently pass. The cascade actually catches this (POST returns 201 first, so the row IS created), but adding an `assert.ok(todos.some(t => t.id === id))` precondition before the DELETE would prove "row was there before" → "row was removed" rather than just "row is not there now." Test hardening, not a current bug.
