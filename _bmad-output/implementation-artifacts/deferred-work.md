@@ -2,6 +2,16 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 1-1 (2026-04-29, Run 2)
+
+### Story 1.1 — monorepo scaffold (commit `9e4570e`, hand-rolled chunk only)
+
+- **Add `typecheck` / `format` / `format:check` scripts to root `package.json`** — only `lint` exists, so strict TS is not verified on any PR and `.prettierrc`/`.prettierignore` are decorative. Belongs in CI/orchestration story (1.10/1.11).
+- **Add `packageManager` field and pin `.nvmrc` to a 22.x minor** — `engines.node >=22` and `.nvmrc=22` allow drift across 22.x releases. Reproducibility nicety; lockfile already catches the npm-vs-pnpm/yarn divergence in practice.
+- **Add `*.tsbuildinfo`, `.turbo/`, `.vercel/` to `.gitignore` and `.prettierignore`** — `incremental: true` in `apps/web/tsconfig.json` will produce `.tsbuildinfo`. Not a problem until tools start generating them; revisit when CI/build artifacts land.
+- **Tighten `lint` script to `eslint . --max-warnings=0`** — 4 cosmetic warnings in fastify-cli scaffold currently pass silently. Aligns with the spec's Completion Notes follow-up about real test code replacing the boilerplate.
+- **Resolver project paths in `eslint.config.mjs:13` are relative** — works when invoked via `npm run lint` from repo root; falls back to node resolver silently if invoked with a different CWD. Cosmetic for current usage.
+
 ## Deferred from: code review of story 1-7 (2026-04-29)
 
 ### Story 1.7 — apps/web shell + Tailwind + TodoApp placeholder (commit `6ec778f`)

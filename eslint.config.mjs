@@ -4,8 +4,6 @@ import nextTs from 'eslint-config-next/typescript';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 
-const repoRoot = new URL('.', import.meta.url).pathname;
-
 const crossAppBan = (selfApp, forbiddenApp) => ({
   plugins: { import: importPlugin },
   settings: {
@@ -58,14 +56,14 @@ export default defineConfig([
   // TypeScript recommended rules for the API app and shared package.
   ...tseslint.configs.recommended.map((cfg) => ({
     ...cfg,
-    files: ['apps/api/**/*.{ts,tsx}', 'packages/shared/**/*.ts'],
+    files: ['apps/api/**/*.{ts,tsx,js,jsx,mjs,cjs}', 'packages/shared/**/*.{ts,tsx,js,jsx,mjs,cjs}'],
   })),
 
   // Fastify-cli scaffold patterns: handler signatures ignore some args,
   // plugin typing uses empty interfaces, test helpers use require().
   // Tightened by stricter overrides as real code lands in later stories.
   {
-    files: ['apps/api/**/*.{ts,tsx}'],
+    files: ['apps/api/**/*.{ts,tsx,js,jsx,mjs,cjs}'],
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -84,5 +82,36 @@ export default defineConfig([
   {
     files: ['apps/api/**/*.{ts,tsx,js,jsx,mjs,cjs}'],
     ...crossAppBan('api', 'web'),
+  },
+
+  // packages/shared is the leaf — apps depend on shared, never the reverse.
+  {
+    files: ['packages/shared/**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    plugins: { import: importPlugin },
+    settings: {
+      'import/resolver': {
+        typescript: { project: ['apps/web/tsconfig.json', 'apps/api/tsconfig.json', 'packages/shared/tsconfig.json'] },
+        node: true,
+      },
+    },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            {
+              target: './packages/shared',
+              from: './apps/web',
+              message: 'packages/shared must not import from apps/web. Shared is the leaf; apps depend on it, not vice versa.',
+            },
+            {
+              target: './packages/shared',
+              from: './apps/api',
+              message: 'packages/shared must not import from apps/api. Shared is the leaf; apps depend on it, not vice versa.',
+            },
+          ],
+        },
+      ],
+    },
   },
 ]);
