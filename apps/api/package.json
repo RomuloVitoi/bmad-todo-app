@@ -1,41 +1,42 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "This project was bootstrapped with Fastify-CLI.",
-  "main": "app.ts",
-  "directories": {
-    "test": "test"
-  },
+  "description": "Fastify v5 REST API for the shared todo list",
+  "type": "module",
+  "main": "src/server.ts",
   "scripts": {
-    "test": "npm run build:ts && tsc -p test/tsconfig.json && c8 node --test -r ts-node/register \"test/**/*.ts\"",
-    "start": "npm run build:ts && fastify start -l info dist/app.js",
     "build:ts": "tsc",
-    "watch:ts": "tsc -w",
-    "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
-    "db:migrate": "drizzle-kit migrate",
-    "db:check": "node --experimental-strip-types src/db/migrate.ts"
+    "dev": "node --env-file=../../.env --watch --import tsx src/server.ts",
+    "start": "npm run build:ts && node dist/server.js",
+    "test": "node --env-file=../../.env --import tsx --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "test:unit": "node --env-file=../../.env --import tsx --test \"src/**/*.test.ts\"",
+    "test:integration": "node --env-file=../../.env --import tsx --test \"test/integration/**/*.int.test.ts\"",
+    "db:migrate": "node --env-file=../../.env node_modules/.bin/drizzle-kit migrate",
+    "db:check": "node --env-file=../../.env --import tsx src/db/migrate.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/env": "^6.0.0",
+    "@fastify/helmet": "^13.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/request-context": "^6.2.0",
+    "@fastify/sensible": "^6.0.0",
+    "@todo-app/shared": "*",
+    "drizzle-orm": "^0.40.0",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
-    "@fastify/autoload": "^6.0.0",
-    "@fastify/sensible": "^6.0.0",
-    "fastify-cli": "^8.0.0",
-    "drizzle-orm": "^0.40.0",
+    "fastify-type-provider-zod": "^4.0.2",
     "pg": "^8.13.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "@types/pg": "^8.11.0",
-    "c8": "^11.0.0",
-    "ts-node": "^10.4.0",
-    "concurrently": "^9.0.0",
+    "drizzle-kit": "^0.30.0",
     "fastify-tsconfig": "^3.0.0",
-    "typescript": "~5.9.2",
-    "drizzle-kit": "^0.30.0"
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.2"
   }
 }

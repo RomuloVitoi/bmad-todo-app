@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-04-19
+last_updated: 2026-04-29
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -43,11 +43,11 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   epic-1: in-progress
-  1-1-scaffold-monorepo-workspace: in-progress
-  1-2-define-the-shared-todo-contract: backlog
-  1-3-provision-local-postgres-via-docker-compose: backlog
-  1-4-api-data-layer-drizzle-schema-migration-client-fail-fast-check: backlog
-  1-5-get-todos-endpoint-with-full-plugin-stack-and-observability: backlog
+  1-1-scaffold-monorepo-workspace: review
+  1-2-define-the-shared-todo-contract: review
+  1-3-provision-local-postgres-via-docker-compose: review
+  1-4-api-data-layer-drizzle-schema-migration-client-fail-fast-check: review
+  1-5-get-todos-endpoint-with-full-plugin-stack-and-observability: review
   1-6-health-and-docs-endpoints: backlog
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: backlog
   1-8-typed-api-client-error-types-and-load-reducer: backlog
