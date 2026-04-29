@@ -1,4 +1,4 @@
-import type { Todo } from '@todo-app/shared';
+import type { CreateTodoRequest, Todo } from '@todo-app/shared';
 import { asc } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -27,4 +27,14 @@ export const listTodos = async (): Promise<Todo[]> => {
     .from(todos)
     .orderBy(asc(todos.createdAt), asc(todos.id));
   return rows.map(toWire);
+};
+
+export const createTodo = async (input: CreateTodoRequest): Promise<Todo> => {
+  const [row] = await db.insert(todos).values({ text: input.text }).returning();
+  if (!row) {
+    // `.returning()` always emits the inserted row(s) on Postgres; this is a
+    // type-narrowing guard for TS, not a runtime expectation.
+    throw new Error('createTodo: insert returned no rows');
+  }
+  return toWire(row);
 };
