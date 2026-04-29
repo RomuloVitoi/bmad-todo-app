@@ -1,6 +1,6 @@
 # Story 2.2: PATCH /todos/:id endpoint with LWW semantics
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -65,8 +65,8 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add `updateTodoCompleted()` query helper to the DB client (AC: #1, #2, #3, #6)**
-  - [ ] Edit [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts):
+- [x] **Task 1: Add `updateTodoCompleted()` query helper to the DB client (AC: #1, #2, #3, #6)**
+  - [x] Edit [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts):
 
     ```ts
     import type { CreateTodoRequest, Todo } from '@todo-app/shared';
@@ -86,16 +86,16 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
     };
     ```
 
-  - [ ] **Why `Todo | null` (not throw on missing)** — the route handler maps `null` to `reply.notFound()` (AC #3). A missing row is a normal client error, not an exceptional condition; throwing here would force the handler into a try/catch that the architecture explicitly forbids ([architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401)).
-  - [ ] **Why `eq(todos.id, id)` (not raw SQL)** — `id` arrives at this function already validated as a UUID by the route's `params` schema (Task 2). Drizzle's `eq()` parameterises the value; no SQL injection risk and no need for explicit cast — Postgres coerces the JS string to `uuid` via the column type.
-  - [ ] **Why a single UPDATE (no transaction)** — atomic by Postgres row-level semantics. AC #6 explicitly forbids `db.transaction(...)` for this single-row write. The architecture flags multi-statement transactions as something to add only when there is a multi-row write ([architecture.md:240](../../_bmad-output/planning-artifacts/architecture.md#L240) — "LWW is the explicit contract"; [architecture.md:670](../../_bmad-output/planning-artifacts/architecture.md#L670) — "LWW enforcement via `UPDATE` without optimistic-concurrency checks").
-  - [ ] **Why no `WHERE updated_at = $X` / `If-Match` token** — there is no `updated_at` column on the `todos` table (Story 1.4, [schema.ts](../../apps/api/src/db/schema.ts)). LWW means the *write* is the truth; no compare-and-swap.
-  - [ ] **Why reuse `toWire`** — guarantees the wire shape matches `TodoSchema` (camelCase `createdAt`, ISO-8601 string). Same helper used by `listTodos` and `createTodo`; keeps GET/POST/PATCH byte-identical for any given row.
-  - [ ] **Watch-out:** `db.update(...).set(...).where(...).returning()` returns `Todo[]`. Destructure `[row]` and rely on the `row ? ... : null` ternary — do not access `[0]` on the bare array under `noUncheckedIndexedAccess`.
-  - [ ] **Watch-out:** Do NOT pass `{ completed, ...input }` or spread arbitrary fields. The route validates exactly `{ completed: boolean }` against `UpdateTodoRequestSchema.strict()`; passing only the explicit field keeps the seam tight against schema drift.
+  - [x] **Why `Todo | null` (not throw on missing)** — the route handler maps `null` to `reply.notFound()` (AC #3). A missing row is a normal client error, not an exceptional condition; throwing here would force the handler into a try/catch that the architecture explicitly forbids ([architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401)).
+  - [x] **Why `eq(todos.id, id)` (not raw SQL)** — `id` arrives at this function already validated as a UUID by the route's `params` schema (Task 2). Drizzle's `eq()` parameterises the value; no SQL injection risk and no need for explicit cast — Postgres coerces the JS string to `uuid` via the column type.
+  - [x] **Why a single UPDATE (no transaction)** — atomic by Postgres row-level semantics. AC #6 explicitly forbids `db.transaction(...)` for this single-row write. The architecture flags multi-statement transactions as something to add only when there is a multi-row write ([architecture.md:240](../../_bmad-output/planning-artifacts/architecture.md#L240) — "LWW is the explicit contract"; [architecture.md:670](../../_bmad-output/planning-artifacts/architecture.md#L670) — "LWW enforcement via `UPDATE` without optimistic-concurrency checks").
+  - [x] **Why no `WHERE updated_at = $X` / `If-Match` token** — there is no `updated_at` column on the `todos` table (Story 1.4, [schema.ts](../../apps/api/src/db/schema.ts)). LWW means the *write* is the truth; no compare-and-swap.
+  - [x] **Why reuse `toWire`** — guarantees the wire shape matches `TodoSchema` (camelCase `createdAt`, ISO-8601 string). Same helper used by `listTodos` and `createTodo`; keeps GET/POST/PATCH byte-identical for any given row.
+  - [x] **Watch-out:** `db.update(...).set(...).where(...).returning()` returns `Todo[]`. Destructure `[row]` and rely on the `row ? ... : null` ternary — do not access `[0]` on the bare array under `noUncheckedIndexedAccess`.
+  - [x] **Watch-out:** Do NOT pass `{ completed, ...input }` or spread arbitrary fields. The route validates exactly `{ completed: boolean }` against `UpdateTodoRequestSchema.strict()`; passing only the explicit field keeps the seam tight against schema drift.
 
-- [ ] **Task 2: Add PATCH handler to the existing todos routes plugin (AC: #1–#5, #7)**
-  - [ ] Edit [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — extend the existing `todosRoutes` plugin (do NOT create a separate file):
+- [x] **Task 2: Add PATCH handler to the existing todos routes plugin (AC: #1–#5, #7)**
+  - [x] Edit [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — extend the existing `todosRoutes` plugin (do NOT create a separate file):
 
     ```ts
     import {
@@ -151,18 +151,18 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
     };
     ```
 
-  - [ ] **Why declare `TodoIdParamsSchema` inline (not in `packages/shared`)** — path-param schemas are server-internal; they don't ship to clients (only request *body* and *response* schemas do). Architecture rule "Zod schema is the contract" ([architecture.md:430](../../_bmad-output/planning-artifacts/architecture.md#L430)) applies to the wire payload, not URL-segment validation. Keeping it inline avoids polluting `packages/shared` with non-shared shapes. **Important:** `.strict()` on params has no effect (URL params can't have unknown keys), but adding it is harmless and forward-compatible with Zod v4 if/when we migrate.
-  - [ ] **Why `reply.notFound()` (not `reply.code(404).send(...)`)** — `@fastify/sensible` produces the canonical envelope `{ statusCode: 404, error: 'Not Found', message }` ([architecture.md:400](../../_bmad-output/planning-artifacts/architecture.md#L400) — "Handlers throw via `@fastify/sensible` constructors"). Hand-crafting the response (anti-pattern at [architecture.md:485](../../_bmad-output/planning-artifacts/architecture.md#L485)) would skip the framework's 4xx logging hook and risk envelope drift.
-  - [ ] **Why `return reply.notFound()` (vs. `throw`)** — both work in Fastify. `return` is the idiomatic form used by `@fastify/sensible` examples and avoids spurious unhandled-rejection telemetry in dev. The global `setErrorHandler` ([app.ts:40](../../apps/api/src/app.ts#L40)) handles either path identically.
-  - [ ] **Why no explicit 400/404 response schema declaration** — per Story 2.1 / [architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401) — Zod-validation 400s and `reply.notFound()` 404s use the sensible envelope automatically. Declaring `{ 400: ErrorResponseSchema, 404: ErrorResponseSchema }` would force every error path through the schema serializer and is unnecessary verbosity.
-  - [ ] **Why DI on `updateTodoCompleted`** — Story 2.1 established `opts?.X ?? defaultX` as the per-route DI seam. Keep the option name `updateTodoCompleted` (mirror the function name; not `update`, `patchTodo`, or `setCompleted`). The seam is unused in production wiring; tests may or may not inject — fine either way.
-  - [ ] **Why the description quotes the LWW phrase verbatim** — AC #7 mandates the exact substring `"Concurrency semantics are last-write-wins; no \`If-Match\` or ETag is supported."` ships in the OpenAPI doc. The integration test in Task 4 (`/docs` verification) asserts this presence; do not paraphrase.
-  - [ ] **Watch-out:** Do NOT wrap the handler in `try/catch`. The Zod type provider validates `params` and `body` BEFORE the handler runs. The global `setErrorHandler` ([app.ts:40-52](../../apps/api/src/app.ts#L40-L52)) catches anything that escapes.
-  - [ ] **Watch-out:** Do NOT use `z.string().refine((s) => isUuid(s))` or `z.coerce.string()` for the params id. Use `z.string().uuid()` — the OpenAPI transform emits `format: uuid` which clients can use for typed generation.
-  - [ ] **Watch-out:** Order matters: place the PATCH block AFTER the existing POST block in the same plugin function. Plugin registration order (`setValidatorCompiler` → `swagger` → `todosRoutes` in [app.ts:22-37](../../apps/api/src/app.ts#L22-L37)) is unchanged.
+  - [x] **Why declare `TodoIdParamsSchema` inline (not in `packages/shared`)** — path-param schemas are server-internal; they don't ship to clients (only request *body* and *response* schemas do). Architecture rule "Zod schema is the contract" ([architecture.md:430](../../_bmad-output/planning-artifacts/architecture.md#L430)) applies to the wire payload, not URL-segment validation. Keeping it inline avoids polluting `packages/shared` with non-shared shapes. **Important:** `.strict()` on params has no effect (URL params can't have unknown keys), but adding it is harmless and forward-compatible with Zod v4 if/when we migrate.
+  - [x] **Why `reply.notFound()` (not `reply.code(404).send(...)`)** — `@fastify/sensible` produces the canonical envelope `{ statusCode: 404, error: 'Not Found', message }` ([architecture.md:400](../../_bmad-output/planning-artifacts/architecture.md#L400) — "Handlers throw via `@fastify/sensible` constructors"). Hand-crafting the response (anti-pattern at [architecture.md:485](../../_bmad-output/planning-artifacts/architecture.md#L485)) would skip the framework's 4xx logging hook and risk envelope drift.
+  - [x] **Why `return reply.notFound()` (vs. `throw`)** — both work in Fastify. `return` is the idiomatic form used by `@fastify/sensible` examples and avoids spurious unhandled-rejection telemetry in dev. The global `setErrorHandler` ([app.ts:40](../../apps/api/src/app.ts#L40)) handles either path identically.
+  - [x] **Why no explicit 400/404 response schema declaration** — per Story 2.1 / [architecture.md:401](../../_bmad-output/planning-artifacts/architecture.md#L401) — Zod-validation 400s and `reply.notFound()` 404s use the sensible envelope automatically. Declaring `{ 400: ErrorResponseSchema, 404: ErrorResponseSchema }` would force every error path through the schema serializer and is unnecessary verbosity.
+  - [x] **Why DI on `updateTodoCompleted`** — Story 2.1 established `opts?.X ?? defaultX` as the per-route DI seam. Keep the option name `updateTodoCompleted` (mirror the function name; not `update`, `patchTodo`, or `setCompleted`). The seam is unused in production wiring; tests may or may not inject — fine either way.
+  - [x] **Why the description quotes the LWW phrase verbatim** — AC #7 mandates the exact substring `"Concurrency semantics are last-write-wins; no \`If-Match\` or ETag is supported."` ships in the OpenAPI doc. The integration test in Task 4 (`/docs` verification) asserts this presence; do not paraphrase.
+  - [x] **Watch-out:** Do NOT wrap the handler in `try/catch`. The Zod type provider validates `params` and `body` BEFORE the handler runs. The global `setErrorHandler` ([app.ts:40-52](../../apps/api/src/app.ts#L40-L52)) catches anything that escapes.
+  - [x] **Watch-out:** Do NOT use `z.string().refine((s) => isUuid(s))` or `z.coerce.string()` for the params id. Use `z.string().uuid()` — the OpenAPI transform emits `format: uuid` which clients can use for typed generation.
+  - [x] **Watch-out:** Order matters: place the PATCH block AFTER the existing POST block in the same plugin function. Plugin registration order (`setValidatorCompiler` → `swagger` → `todosRoutes` in [app.ts:22-37](../../apps/api/src/app.ts#L22-L37)) is unchanged.
 
-- [ ] **Task 3: Extend integration tests (AC: #1–#5, #8)**
-  - [ ] Edit [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — append PATCH test cases after the existing POST block. Suggested cases:
+- [x] **Task 3: Extend integration tests (AC: #1–#5, #8)**
+  - [x] Edit [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — append PATCH test cases after the existing POST block. Suggested cases:
 
     ```ts
     test('PATCH /todos/:id — toggles false→true on an existing row (AC #1)', async () => {
@@ -302,12 +302,12 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
     });
     ```
 
-  - [ ] **Why seed via POST instead of `seedTodos()`** — using the public POST keeps tests black-box: a regression in POST shows up in PATCH tests too. `seedTodos()` is still useful when a specific `createdAt` ordering or pre-existing `completed: true` state is needed; reach for it then.
-  - [ ] **Watch-out:** `beforeEach` in [todos.int.test.ts:17-20](../../apps/api/test/integration/todos.int.test.ts#L17-L20) calls `resetTodos()`. Each test starts empty. Do NOT seed cross-test state.
-  - [ ] **Watch-out:** Do NOT assert the exact 400 `message` string in negative tests. Zod's error messages can shift across minor versions; pinning the status code and the envelope shape is the contract. (Spec deferred from Story 2.1 review covers this concern at the file level.)
+  - [x] **Why seed via POST instead of `seedTodos()`** — using the public POST keeps tests black-box: a regression in POST shows up in PATCH tests too. `seedTodos()` is still useful when a specific `createdAt` ordering or pre-existing `completed: true` state is needed; reach for it then.
+  - [x] **Watch-out:** `beforeEach` in [todos.int.test.ts:17-20](../../apps/api/test/integration/todos.int.test.ts#L17-L20) calls `resetTodos()`. Each test starts empty. Do NOT seed cross-test state.
+  - [x] **Watch-out:** Do NOT assert the exact 400 `message` string in negative tests. Zod's error messages can shift across minor versions; pinning the status code and the envelope shape is the contract. (Spec deferred from Story 2.1 review covers this concern at the file level.)
 
-- [ ] **Task 4: New concurrency integration test file (AC: #6, #8)**
-  - [ ] Create [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts):
+- [x] **Task 4: New concurrency integration test file (AC: #6, #8)**
+  - [x] Create [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts):
 
     ```ts
     import assert from 'node:assert/strict';
@@ -365,20 +365,20 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
     });
     ```
 
-  - [ ] **Why a separate file (`concurrency.int.test.ts`)** — architecture explicitly calls this file out at [architecture.md:597](../../_bmad-output/planning-artifacts/architecture.md#L597) ("LWW semantics proof"). Splits a slow, race-y test off from the fast `todos.int.test.ts` suite so it can be selectively skipped or run if it ever flakes. It still uses the same `buildTestApp()` helper so there is no test-infra duplication.
-  - [ ] **Why `Promise.all` (not staggered awaits)** — the goal is *event-loop parallelism* against the same row. Awaiting between them would serialise into a normal sequential test (covered already in Task 3's idempotency case).
-  - [ ] **Why we DON'T assert which write won** — that is the definition of LWW: which `UPDATE` commits last is non-deterministic from the client's perspective (depends on connection acquisition order, scheduler, etc.). AC #6 demands "the final DB row reflects whichever write landed last" — present-tense observation, not a deterministic prediction.
-  - [ ] **Watch-out:** Postgres pg-pool default size is 10 (`apps/api/src/db/client.ts` Pool with no `max` → driver default). Two parallel statements MUST get distinct connections to actually race. If pool ever drops to size 1, this test silently becomes a sequential test. Story 1.5 deferred a `max:` setting; this file is one of the things that would catch a misconfiguration.
-  - [ ] **Watch-out:** Do NOT add a third concurrent write or larger fan-out. AC #6 specifies *two* concurrent PATCHes. Larger N changes the proof shape (now you need to assert any of N values won), and the test gets flaky on slow CI machines.
+  - [x] **Why a separate file (`concurrency.int.test.ts`)** — architecture explicitly calls this file out at [architecture.md:597](../../_bmad-output/planning-artifacts/architecture.md#L597) ("LWW semantics proof"). Splits a slow, race-y test off from the fast `todos.int.test.ts` suite so it can be selectively skipped or run if it ever flakes. It still uses the same `buildTestApp()` helper so there is no test-infra duplication.
+  - [x] **Why `Promise.all` (not staggered awaits)** — the goal is *event-loop parallelism* against the same row. Awaiting between them would serialise into a normal sequential test (covered already in Task 3's idempotency case).
+  - [x] **Why we DON'T assert which write won** — that is the definition of LWW: which `UPDATE` commits last is non-deterministic from the client's perspective (depends on connection acquisition order, scheduler, etc.). AC #6 demands "the final DB row reflects whichever write landed last" — present-tense observation, not a deterministic prediction.
+  - [x] **Watch-out:** Postgres pg-pool default size is 10 (`apps/api/src/db/client.ts` Pool with no `max` → driver default). Two parallel statements MUST get distinct connections to actually race. If pool ever drops to size 1, this test silently becomes a sequential test. Story 1.5 deferred a `max:` setting; this file is one of the things that would catch a misconfiguration.
+  - [x] **Watch-out:** Do NOT add a third concurrent write or larger fan-out. AC #6 specifies *two* concurrent PATCHes. Larger N changes the proof shape (now you need to assert any of N values won), and the test gets flaky on slow CI machines.
 
-- [ ] **Task 5: Verify /docs renders the PATCH endpoint (AC: #7)**
-  - [ ] Start the dev stack: `npm run dev` (from repo root).
-  - [ ] Open `http://localhost:4000/docs`. Confirm:
+- [x] **Task 5: Verify /docs renders the PATCH endpoint (AC: #7)**
+  - [x] Start the dev stack: `npm run dev` (from repo root).
+  - [x] Open `http://localhost:4000/docs`. Confirm:
     - The `todos` tag section now lists `GET /todos`, `POST /todos`, AND `PATCH /todos/{id}`.
     - Clicking PATCH expands a request body schema with one field `completed` (boolean) and a path param `id` (uuid format).
     - The 200 response shows the `Todo` schema.
     - The description string ends with the LWW phrase verbatim.
-  - [ ] Fetch `http://localhost:4000/docs/json` and grep for the PATCH operation:
+  - [x] Fetch `http://localhost:4000/docs/json` and grep for the PATCH operation:
 
     ```bash
     curl -s http://localhost:4000/docs/json \
@@ -386,23 +386,23 @@ So that clients can toggle completion state (FR24) with explicit last-write-wins
     ```
 
     Capture the output in Debug Log References. The `description` field MUST contain the verbatim LWW substring; fail Task 5 if it does not.
-  - [ ] **No code changes required** — `jsonSchemaTransform` from `fastify-type-provider-zod@^4` derives the params/body/response schemas from Zod automatically. `tags: ['todos']` (Task 2) handles grouping; the `todos` tag is pre-declared in [apps/api/src/plugins/swagger.ts:38](../../apps/api/src/plugins/swagger.ts#L38).
+  - [x] **No code changes required** — `jsonSchemaTransform` from `fastify-type-provider-zod@^4` derives the params/body/response schemas from Zod automatically. `tags: ['todos']` (Task 2) handles grouping; the `todos` tag is pre-declared in [apps/api/src/plugins/swagger.ts:38](../../apps/api/src/plugins/swagger.ts#L38).
 
-- [ ] **Task 6: Sanity gates**
-  - [ ] `npm run lint` — must report 0 warnings, 0 errors.
-  - [ ] `npm run typecheck` — must report 0 errors. The handler's `req.params` should auto-type as `{ id: string }` and `req.body` as `{ completed: boolean }`.
-  - [ ] `npm run test` — runs unit tests across all workspaces (no DB required). Must pass.
-  - [ ] `npm run test:integration --workspace apps/api` — runs `todos.int.test.ts` + new `concurrency.int.test.ts` against a live local Postgres (start with `docker compose up -d db` if not already running). All PATCH cases AND the concurrency case must pass on three consecutive runs (test for flakiness).
-  - [ ] **No new lint/typecheck rules required.** The `eslint.config.mjs` and `tsconfig.base.json` already cover everything.
-  - [ ] If integration tests fail with "DATABASE_URL does not look like a local/test database," verify `apps/api/.env` exists and points to the local docker-compose Postgres.
+- [x] **Task 6: Sanity gates**
+  - [x] `npm run lint` — must report 0 warnings, 0 errors.
+  - [x] `npm run typecheck` — must report 0 errors. The handler's `req.params` should auto-type as `{ id: string }` and `req.body` as `{ completed: boolean }`.
+  - [x] `npm run test` — runs unit tests across all workspaces (no DB required). Must pass.
+  - [x] `npm run test:integration --workspace apps/api` — runs `todos.int.test.ts` + new `concurrency.int.test.ts` against a live local Postgres (start with `docker compose up -d db` if not already running). All PATCH cases AND the concurrency case must pass on three consecutive runs (test for flakiness).
+  - [x] **No new lint/typecheck rules required.** The `eslint.config.mjs` and `tsconfig.base.json` already cover everything.
+  - [x] If integration tests fail with "DATABASE_URL does not look like a local/test database," verify `apps/api/.env` exists and points to the local docker-compose Postgres.
 
-- [ ] **Task 7: Commit**
-  - [ ] Stage exactly:
+- [x] **Task 7: Commit**
+  - [x] Stage exactly:
     - **Modified:** [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts), [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts), [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts).
     - **New:** [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts).
-  - [ ] Commit message: `feat(api): PATCH /todos/:id endpoint with LWW semantics + concurrency proof (Story 2.2)`
-  - [ ] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, or any `apps/web/**` file (Story 2.2 is API-only; web wiring lives in Story 2.6).
-  - [ ] Record commit hash in the Change Log when the user runs the commit.
+  - [x] Commit message: `feat(api): PATCH /todos/:id endpoint with LWW semantics + concurrency proof (Story 2.2)`
+  - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, or any `apps/web/**` file (Story 2.2 is API-only; web wiring lives in Story 2.6).
+  - [x] Record commit hash in the Change Log when the user runs the commit.
 
 ## Dev Notes
 
@@ -594,16 +594,56 @@ Story 2.1 review yielded six deferred items in [deferred-work.md](./deferred-wor
 
 ### Agent Model Used
 
-claude-opus-4-7 (1M context) — `/bmad-create-story` workflow.
+claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 
 ### Debug Log References
 
+- Lint: `npm run lint` — clean (0 warnings, 0 errors).
+- Typecheck: `npm run typecheck` — clean across `packages/shared`, `apps/api`, `apps/web`. `req.params.id` auto-typed as `string`; `req.body.completed` as `boolean`.
+- Unit tests: `npm run test` — 48/48 passing (shared 25, api 4, web 19). No regressions.
+- Integration tests: `npm --workspace apps/api run test:integration` — **33/33 passing** (24 pre-existing + 8 new PATCH cases in `todos.int.test.ts` + 1 LWW case in `concurrency.int.test.ts`). Local Postgres on container `todo-app-db` (`127.0.0.1:5433`).
+- **Run-three rule satisfied:** integration suite executed three consecutive times — all 33/33 green on every run (durations ~3.5s, ~3.0s, ~3.1s). Concurrency test (LWW) is stable.
+- /docs verification: started API via `npm --workspace apps/api run dev`, then `curl http://localhost:4000/docs/json | python3 -m json.tool`. Output confirmed:
+  - `paths['/todos/{id}']['patch']` exists, tagged `['todos']`.
+  - summary: `"Update a todo's completion state"`.
+  - description contains the verbatim AC #7 phrase: `"Concurrency semantics are last-write-wins; no \`If-Match\` or ETag is supported."`.
+  - parameters: `id` with `format: uuid`, `required: true`, `in: path`.
+  - requestBody: `{ completed: boolean }`, `required: ["completed"]`, `additionalProperties: false` (proves `.strict()` reaches OpenAPI).
+  - response 200: full `Todo` shape — `id` (uuid), `text` (minLength 1, maxLength 500), `completed` (boolean), `createdAt` (date-time).
+  - `GET /docs` → 200 (Swagger UI HTML served).
+
 ### Completion Notes List
 
+- All 8 ACs satisfied:
+  - **AC #1** (200 + bare entity, false→true): covered by `PATCH /todos/:id — toggles false→true on an existing row`.
+  - **AC #2** (true→false + idempotent setter): covered by two integration tests — toggle and "same value twice" both return 200.
+  - **AC #3** (404 with sensible envelope on valid-but-missing UUID): asserts `statusCode: 404, error: 'Not Found', message: <string>`.
+  - **AC #4** (400 on malformed UUID via Zod params validation): single test against `/todos/not-a-uuid`.
+  - **AC #5** (400 on empty body / missing `completed` / unknown extras): three tests — `{}`, `{ something: 'else' }`, `{ completed: true, text: 'oops' }`.
+  - **AC #6** (LWW under concurrent opposite writes): dedicated `concurrency.int.test.ts`, two parallel PATCHes via `Promise.all`, both 200, final state asserts boolean (no third value, no error). Stable across 3 consecutive runs.
+  - **AC #7** (`/docs` documents PATCH with verbatim LWW phrase): verified via live `/docs/json` inspection.
+  - **AC #8** (integration coverage in two files): 8 cases in `todos.int.test.ts`, 1 case in new `concurrency.int.test.ts`.
+- Implementation matches the spec verbatim:
+  - `updateTodoCompleted(id, completed): Promise<Todo | null>` with destructure-with-guard on `.returning()`.
+  - DI seam `opts?.updateTodoCompleted ?? defaultUpdateTodoCompleted` mirrors Story 2.1's `listTodos` / `createTodo` pattern.
+  - Inline `TodoIdParamsSchema = z.object({ id: z.string().uuid() }).strict()` — no pollution of `packages/shared`.
+  - Bare `TodoSchema` 200 response (single-resource shape per architecture.md:363-368).
+  - Handler is `parse → call → 404-or-return`; no `try/catch`, no manual validation, no logging, no transaction.
+  - OpenAPI description ends with the verbatim AC #7 substring.
+- **Notable deviation (1):** Updated `apps/api/package.json` `test:integration` script to add `--test-concurrency=1`. Reason: `concurrency.int.test.ts` runs ~150ms; in parallel-file mode, `beforeEach(resetTodos)` from `todos.int.test.ts` could TRUNCATE the row mid-`Promise.all`, causing one PATCH to 404. Without this fix the first-run-after-implementation failed; with it, all three consecutive runs are green. This is a real test-infra issue exposed by Story 2.2's first long-running cross-file test, not a spec deviation in the implementation itself. The spec's "run-three rule" implicitly required this fix.
+- Out-of-scope items remained out of scope: no web changes, no migration, no `Location` header, no `If-Match`/ETag/`updated_at`, no `db.transaction(...)`, no DELETE, no PATCH-text endpoint.
+
 ### File List
+
+- **Modified:** [apps/api/src/db/client.ts](../../apps/api/src/db/client.ts) — added `updateTodoCompleted()` export and `eq` import (~12 LOC, 1 import line modified).
+- **Modified:** [apps/api/src/routes/todos.ts](../../apps/api/src/routes/todos.ts) — added PATCH handler within existing `todosRoutes` plugin, added inline `TodoIdParamsSchema`, extended `TodosRouteOptions` with optional `updateTodoCompleted`, added imports (`UpdateTodoRequestSchema`, `z`, `defaultUpdateTodoCompleted`) (~30 LOC).
+- **Modified:** [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts) — appended 8 PATCH integration test cases (~145 LOC).
+- **New:** [apps/api/test/integration/concurrency.int.test.ts](../../apps/api/test/integration/concurrency.int.test.ts) — LWW concurrency proof (~50 LOC).
+- **Modified:** [apps/api/package.json](../../apps/api/package.json) — added `--test-concurrency=1` to `test:integration` script (1 line).
 
 ## Change Log
 
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 2 (PATCH /todos/:id with LWW semantics, follows Story 2.1 POST). |
+| 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–7 complete. PATCH /todos/:id live with `.strict()` body, uuid params, sensible 404 envelope, single UPDATE LWW (no transaction, no If-Match). Integration suite 33/33 green on three consecutive runs. /docs documents PATCH under `todos` tag with verbatim LWW description. One spec deviation: `--test-concurrency=1` added to `test:integration` script to prevent cross-file `beforeEach(resetTodos)` from racing with `concurrency.int.test.ts`. Commit hash: `475da7f`. |

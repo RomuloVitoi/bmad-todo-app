@@ -57,6 +57,8 @@ last_updated: 2026-04-29
 # 2026-04-29: 2-1 in-progress → review (Dev-Story: POST /todos endpoint + 9 integration tests; lint/typecheck/test 48/48 + integration 24/24 green; /docs renders POST /todos under the todos tag)
 # 2026-04-29: 2-1 review → done (Code-Review: 1 patch applied — drop misleading LWW phrase from POST /todos OpenAPI description; 6 defers logged, 10 dismissed; Acceptance Auditor 7/7 ACs PASS)
 # 2026-04-29: 2-2 backlog → ready-for-dev (Create-Story: PATCH /todos/:id with LWW + concurrency.int.test.ts; ~225 LOC across 4 files, 1 new)
+# 2026-04-29: 2-2 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-04-29: 2-2 in-progress → review (Dev-Story: PATCH /todos/:id endpoint + 9 integration tests inc. LWW; 48/48 unit + 33/33 integration green on 3 consecutive runs; /docs documents PATCH with verbatim LWW phrase; +1 spec deviation: --test-concurrency=1 added to test:integration)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -79,7 +81,7 @@ development_status:
 
   epic-2: in-progress
   2-1-post-todos-endpoint: done
-  2-2-patch-todos-id-endpoint-with-lww-semantics: ready-for-dev
+  2-2-patch-todos-id-endpoint-with-lww-semantics: review
   2-3-delete-todos-id-endpoint: backlog
   2-4-reducer-extensions-for-optimistic-mutations: backlog
   2-5-create-todo-via-todoinput-full-vertical-slice: backlog
