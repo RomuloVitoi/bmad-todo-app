@@ -42,6 +42,10 @@ last_updated: 2026-04-29
 # 2026-04-29: 1-3 review → done (Run 2 review: 0 patches, 3 defers — all ACs met, hardening out of scope)
 # 2026-04-29: 1-4 review → done (Run 2 review: 2 patches applied — drizzleDir resolution, .gitattributes scope)
 # 2026-04-29: 1-8 review → done (Run 2 review: 2 patches applied — JSON/Zod parse → ApiError, refetch signal)
+# 2026-04-29: 1-9 backlog → ready-for-dev (Create-Story: TodoList + TodoItem with jsdom + RTL)
+# 2026-04-29: 1-10 backlog → ready-for-dev (Create-Story: scripts/dev.sh + npm-run-all2 + README quick-start)
+# 2026-04-29: 1-11 backlog → ready-for-dev (Create-Story: Dockerfiles + GHCR CI workflow + production compose)
+# 2026-04-29: 1-9 ready-for-dev → in-progress → review (Dev-Story: TodoList + TodoItem; 19/19 web tests; 0 lint warnings)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -57,9 +61,9 @@ development_status:
   1-6-health-and-docs-endpoints: done
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
   1-8-typed-api-client-error-types-and-load-reducer: done
-  1-9-render-list-states-loading-empty-populated-read-only: backlog
-  1-10-single-command-local-dev-orchestration: backlog
-  1-11-build-and-deployment-artifacts: backlog
+  1-9-render-list-states-loading-empty-populated-read-only: review
+  1-10-single-command-local-dev-orchestration: ready-for-dev
+  1-11-build-and-deployment-artifacts: ready-for-dev
   epic-1-retrospective: optional
 
   epic-2: backlog

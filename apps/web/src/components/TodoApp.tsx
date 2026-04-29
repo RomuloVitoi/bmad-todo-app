@@ -4,6 +4,7 @@ import { useEffect, useReducer } from 'react';
 import { getTodos } from '@/lib/api';
 import { ApiError } from '@/lib/errors';
 import { initialState, reducer } from '@/lib/reducer';
+import TodoList from './TodoList';
 
 export default function TodoApp() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -57,14 +58,7 @@ export default function TodoApp() {
       <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
         Shared Todos
       </h1>
-      <div
-        data-testid="todo-list-placeholder"
-        data-status={state.status}
-        aria-live="polite"
-        className="rounded-md border border-current/10 px-4 py-8 text-center text-sm opacity-70"
-      >
-        The list will appear here.
-      </div>
+      <TodoList state={state} />
     </section>
   );
 }
