@@ -38,6 +38,15 @@ export default function TodoList({ state }: TodoListProps) {
     );
   }
 
+  if (status !== 'success') {
+    // Compile-time exhaustiveness: adding a `LoadStatus` variant without a
+    // matching branch above narrows `status` away from `never` here and fails
+    // `tsc --noEmit`. Mirrors the reducer's `_exhaustive: never` pin.
+    const _exhaustive: never = status;
+    void _exhaustive;
+    return null;
+  }
+
   if (todos.length === 0) {
     return (
       <p

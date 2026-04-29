@@ -2,6 +2,14 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 1-9 (2026-04-29)
+
+### Story 1.9 — TodoList + TodoItem (commit `01f9a75`)
+
+- **`aria-checked` on `<li role="listitem">` is invalid ARIA per ARIA 1.2** — `apps/web/src/components/TodoItem.tsx:11-13`. Spec-prescribed in Task 3 line 149 as the lightest Epic-1 signal that satisfies NFR12 without falsely advertising interactivity; eslint-disable comment in place documents the deferral. Story 2.6 swaps the entire row to Radix Checkbox with proper `role="checkbox"` semantics, which retires the disable.
+- **Error branch drops `state.error` and `state.requestId`** — `apps/web/src/components/TodoList.tsx:21-32`. Component destructures `{ status, todos }` only; the reducer's captured correlation-id is not rendered, copied, or even hidden in a `data-*` attribute. Spec-mandated minimal fallback per AC #6 ("EPIC 1 PLACEHOLDER"); Story 3.1 owns the full error UX via Radix Toast where the requestId can surface for debugging.
+- **`aria-live` region is a sibling-swap, not a persistent container** — `apps/web/src/components/TodoList.tsx:8-50`. Each branch (loading / empty / populated / error) returns a different DOM node, so a `success → loading` transition mounts a fresh live region; some screen readers only announce updates inside an *existing* live region. No `success → loading` transition exists in Epic 1 (visibility refetch deliberately skips `loadStart`). Revisit when Story 3.4's retry button or a manual-refresh affordance introduces the transition path.
+
 ## Deferred from: code review of stories 1-2, 1-3, 1-4, 1-8 (2026-04-29, Run 2)
 
 ### Story 1.2 — Zod contracts (commit `c2168ca`)

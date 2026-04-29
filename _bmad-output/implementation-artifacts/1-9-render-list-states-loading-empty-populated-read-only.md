@@ -1,6 +1,6 @@
 # Story 1.9: Render list states — loading, empty, populated (read-only)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -521,6 +521,15 @@ So that I always have an unambiguous visual answer about what the app is doing (
     - **Modified:** [apps/web/package.json](../../apps/web/package.json) (devDeps: jsdom, @testing-library/{react,dom,jest-dom}), [apps/web/vitest.config.mts](../../apps/web/vitest.config.mts), [apps/web/src/components/TodoApp.tsx](../../apps/web/src/components/TodoApp.tsx), root [package-lock.json](../../package-lock.json).
   - [x] Commit message: `feat(web): TodoList + TodoItem with loading/empty/populated/error branches (Story 1.9)`
   - [x] **Do NOT** stage anything in `apps/api/`, `packages/shared/`, or other unrelated paths.
+
+### Review Findings
+
+Code review (2026-04-29) — Acceptance Auditor: 8/8 ACs pass. Blind Hunter + Edge Case Hunter: 1 patch, 3 deferred, 7 dismissed as noise.
+
+- [x] `[Review][Patch]` Add compile-time exhaustiveness guard on `state.status` in `<TodoList />` — [apps/web/src/components/TodoList.tsx:41-48](../../apps/web/src/components/TodoList.tsx#L41-L48). APPLIED 2026-04-29: inserted `if (status !== 'success') { const _exhaustive: never = status; void _exhaustive; return null; }` between the error branch and the empty/populated branches. Mirrors the reducer's existing `_exhaustive: never` pin. Sanity gates: tsc clean, eslint clean, 19/19 tests still pass.
+- [x] `[Review][Defer]` `aria-checked` on `<li role="listitem">` is invalid ARIA per ARIA 1.2 — [apps/web/src/components/TodoItem.tsx:11-13](../../apps/web/src/components/TodoItem.tsx#L11-L13). Deferred, spec-prescribed (Task 3 line 149); eslint-disable in place; Story 2.6 swaps to Radix Checkbox with proper `role="checkbox"` semantics.
+- [x] `[Review][Defer]` Error branch ignores `state.error` and `state.requestId`, dropping correlation-id — [apps/web/src/components/TodoList.tsx:21-32](../../apps/web/src/components/TodoList.tsx#L21-L32). Deferred, spec-mandated minimal-fallback per AC #6; Story 3.1 owns the full error UX via Radix Toast.
+- [x] `[Review][Defer]` `aria-live` region is a sibling-swap (loading/empty/error/list are different DOM nodes); AT may miss `success → loading` announcements — [apps/web/src/components/TodoList.tsx:8-50](../../apps/web/src/components/TodoList.tsx#L8-L50). Deferred, no `success → loading` transition path exists in Epic 1 (visibility refetch deliberately skips `loadStart`); revisit when Story 3.4's retry button or a manual-refresh affordance lands.
 
 ## Dev Notes
 

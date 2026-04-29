@@ -46,6 +46,7 @@ last_updated: 2026-04-29
 # 2026-04-29: 1-10 backlog → ready-for-dev (Create-Story: scripts/dev.sh + npm-run-all2 + README quick-start)
 # 2026-04-29: 1-11 backlog → ready-for-dev (Create-Story: Dockerfiles + GHCR CI workflow + production compose)
 # 2026-04-29: 1-9 ready-for-dev → in-progress → review (Dev-Story: TodoList + TodoItem; 19/19 web tests; 0 lint warnings)
+# 2026-04-29: 1-9 review → done (Code-Review: 1 patch applied — TodoList exhaustiveness guard; 3 defers logged; AC auditor 8/8 pass)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -61,7 +62,7 @@ development_status:
   1-6-health-and-docs-endpoints: done
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
   1-8-typed-api-client-error-types-and-load-reducer: done
-  1-9-render-list-states-loading-empty-populated-read-only: review
+  1-9-render-list-states-loading-empty-populated-read-only: done
   1-10-single-command-local-dev-orchestration: ready-for-dev
   1-11-build-and-deployment-artifacts: ready-for-dev
   epic-1-retrospective: optional
