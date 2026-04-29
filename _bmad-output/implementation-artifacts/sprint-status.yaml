@@ -67,6 +67,7 @@ last_updated: 2026-04-29
 # 2026-04-29: 2-4 backlog → ready-for-dev (Create-Story: 7 reducer optimistic actions + TodoEntry type; pure-function semantics, exhaustive switch, reference-equality on no-ops; ~275 LOC across 2 files, 0 new)
 # 2026-04-29: 2-4 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-29: 2-4 in-progress → review (Dev-Story: 7 reducer optimistic actions + TodoEntry type widening; lint/typecheck clean; web tests 19 → 41; exhaustiveness pin manually verified; no spec deviations; components untouched per scope)
+# 2026-04-29: 2-4 review → done (Code-Review: 1 patch applied — explicit not.toBe(state) on real-change paths to pin AC #12 second half; 2 defers logged, 33 dismissed; Acceptance Auditor 11 pass + 1 partial-now-fixed; web tests 41 → 42)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -91,7 +92,7 @@ development_status:
   2-1-post-todos-endpoint: done
   2-2-patch-todos-id-endpoint-with-lww-semantics: done
   2-3-delete-todos-id-endpoint: done
-  2-4-reducer-extensions-for-optimistic-mutations: review
+  2-4-reducer-extensions-for-optimistic-mutations: done
   2-5-create-todo-via-todoinput-full-vertical-slice: backlog
   2-6-toggle-completion-via-radix-checkbox: backlog
   2-7-delete-todo-via-delete-button: backlog

@@ -2,6 +2,13 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-4 (2026-04-29)
+
+### Story 2.4 — reducer extensions for optimistic mutations (commit `505c6df`)
+
+- **`loadStart` / `loadSuccess` / `loadError` clobber pending optimistic entries** — [apps/web/src/lib/reducer.ts:42-52](../../apps/web/src/lib/reducer.ts#L42-L52). Today only the initial-mount load fires `loadStart`, so no in-flight optimistic exists at that moment — the lifecycle is safe by construction. The hazard becomes load-bearing for Story 3.4 (initial-load error recovery / retry button): a retry that fires `loadStart` while a mutation is mid-flight would silently discard the pending entry, and any subsequent `addReconcile`/`addFailed` for that tempId becomes a permanent no-op (status would no longer be `success`). Decide stale-while-revalidate semantics when the retry button lands. (Architecture cuts re-fetch UI from v1; this is the natural place to revisit.)
+- **No frozen-input test pinning AC #10's "no mutation of state/action arguments"** — [apps/web/src/lib/reducer.test.ts](../../apps/web/src/lib/reducer.test.ts). Reducer uses `slice()`/`filter()`/spread correctly today; a future regression that mutates `state.todos` in place (e.g. `state.todos.push(...)` then return `state`) would silently pass — tests assert on `next.todos` references and `toBe(existing)` child preservation, both of which survive in-place mutation. Hardening: `Object.freeze(state)` + `Object.freeze(state.todos)` in setup, or pre/post `state.todos.length` snapshots. Belongs in a future test-infra story.
+
 ## Deferred from: code review of story 2-3 (2026-04-29)
 
 ### Story 2.3 — DELETE /todos/:id with concurrent-delete safety (commits `114056d..c46a3e4`)

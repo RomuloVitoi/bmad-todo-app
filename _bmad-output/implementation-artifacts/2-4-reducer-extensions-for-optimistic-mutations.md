@@ -1,6 +1,6 @@
 # Story 2.4: Reducer extensions for optimistic mutations
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -513,7 +513,15 @@ So that the UI can respond in ≤100 ms (NFR1) while preserving correctness on f
   - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, `apps/api/**`, or `apps/web/src/components/**` (Story 2.4 is reducer-only; UI wiring lives in Stories 2.5–2.7).
   - [x] Record commit hash in the Change Log when the user runs the commit.
 
-## Dev Notes
+### Review Findings
+
+Code review of commit `505c6df` (Story 2.4). Three adversarial layers run in parallel: Blind Hunter (diff-only, 14 raised), Edge Case Hunter (diff + project access, 22 raised), Acceptance Auditor (12 ACs vs diff, 1 partial). Triage: **1 patch, 2 defers, 33 dismissed.**
+
+- [ ] [Review][Patch] AC #12 second half ("not preserved when state actually changes") not explicitly asserted [apps/web/src/lib/reducer.test.ts] — current happy-path tests (e.g. `addOptimistic appends a TodoEntry…`, `addReconcile replaces the tempId entry…`) verify reference preservation on no-ops via `toBe(state)`, but no test pins `expect(next).not.toBe(state)` on a real-change path. Implementation already returns `{...state, todos: ...}`, so the assertion will pass — the gap is in the test pinning, not the code.
+- [x] [Review][Defer] Lifecycle: `loadStart` / `loadSuccess` / `loadError` clobber pending optimistic entries [apps/web/src/lib/reducer.ts:42-52] — deferred, not a v1 concern. Architecture cuts re-fetch UI from v1; today only the initial-mount load fires `loadStart`, so no in-flight optimistic exists at that moment. Becomes load-bearing for Story 3.4 (initial-load error recovery / retry button) — the retry button will fire `loadStart` and discard whatever was pending. Track for Epic 3.
+- [x] [Review][Defer] Test hardening: AC #10 ("no mutation of state/action arguments") not pinned by a frozen-input test [apps/web/src/lib/reducer.test.ts] — deferred, pre-existing pattern. Reducer uses `slice()`/`filter()`/spread correctly today; a future regression that reaches into `state.todos` mutably would silently pass current tests (e.g. `state.todos.push(...)` then return `state` would still equate to today's `toBe(existing)` reference checks). Hardening: `Object.freeze(state)` + `Object.freeze(state.todos)` in setup, or pre/post `state.todos.length` snapshots. Belongs in a future test-infra story.
+
+**Dismissed as noise (33):** caller-responsibility issues — tempId/UUID collisions, text/createdAt validation, NaN/Infinity/non-integer indices, `serverTodo.id === tempId` collisions, duplicate-id reinserts (per spec the caller stashes findIndex-derived integers and crypto.randomUUID-generated tempIds; entropy is owned by Stories 2.5–2.7); spec-mandated intentional behaviors — `toggleOptimistic`/`toggleFailed` no-op-on-equal-value (defensive double-click guard), `deleteFailed` index clamping to `[0, length]` (defensive race guard, ACK in spec Watch-out), TodoEntry widening on public state.todos (per spec dev-note: "components automatically receive TodoEntry; pending is opt-in"), `loadSuccess` payload `Todo[]` typed against `TodoEntry[]` storage (intentional contravariant assignability), `errorDismiss` action absent (Story 3.1 owns it); behaviors that are correct as-is — `addReconcile` arrives twice (second is a natural no-op via `idx === -1`), pending flag preserved across `toggleOptimistic` of an in-flight entry (the create IS still pending — semantically correct), `addOptimistic` always returns a fresh state (no logical no-op possible since it always appends); test-style nits — `toBe(existing)` reference check on `addOptimistic` end-append (deliberate property: spread preserves child references), shape-parity test compares one entry only (sufficient for AC #2 wording).
 
 ### Where this story sits
 
@@ -754,3 +762,4 @@ claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 4 (first web-side story; reducer extensions for optimistic mutations; follows API stories 2.1–2.3, precedes UI wiring stories 2.5–2.7). |
 | 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–5 complete. Reducer now has 10 action variants (3 load + 7 optimistic) with `TodoEntry` widening, pure-function semantics, reference-equality on no-ops, defensive clamping in `deleteFailed`, and exhaustive switch covering all variants. Web test count: 19 → 41. Exhaustiveness pin manually verified via temporary case-name break. No spec deviations. Commit hash: `505c6df`. |
+| 2026-04-29 | Story reviewed via `/bmad-code-review`. Status: review → done. 0 decision-needed, 1 patch applied — explicit `expect(next).not.toBe(state)` assertion across all 7 new actions to pin AC #12's "not preserved when state actually changes" half. 2 defers logged (loadStart/loadSuccess clobbering pending entries — Epic 3.4 retry; frozen-input mutation guard — future test-infra). 33 findings dismissed (caller-responsibility + spec-design intentional behavior). Acceptance Auditor: 11 PASS + 1 partial-now-fixed = 12/12 PASS. Web test count: 41 → 42. Lint/typecheck clean. |

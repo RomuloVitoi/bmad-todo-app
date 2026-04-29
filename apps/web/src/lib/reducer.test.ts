@@ -345,4 +345,48 @@ describe('reducer (optimistic mutations)', () => {
       expect(loaded.todos[0]).not.toHaveProperty('pending');
     });
   });
+
+  describe('pure-function reference semantics (AC #12)', () => {
+    it('returns a new state reference for every new action that actually changes state', () => {
+      const a: TodoEntry = todo({ id: 'a', completed: false });
+      const aDone: TodoEntry = todo({ id: 'a', completed: true });
+      const tPending: TodoEntry = {
+        id: 't-1',
+        text: 'milk',
+        completed: false,
+        createdAt: '2026-04-29T12:00:00.000Z',
+        pending: true,
+      };
+      const serverTodo: Todo = todo({ id: 's-99', text: 'milk' });
+
+      const cases: Array<[TodoState, TodoAction]> = [
+        [
+          successState([]),
+          {
+            type: 'addOptimistic',
+            payload: { tempId: 't-1', text: 'milk', createdAt: '2026-04-29T12:00:00.000Z' },
+          },
+        ],
+        [
+          successState([tPending]),
+          { type: 'addReconcile', payload: { tempId: 't-1', todo: serverTodo } },
+        ],
+        [successState([tPending]), { type: 'addFailed', payload: { tempId: 't-1' } }],
+        [
+          successState([a]),
+          { type: 'toggleOptimistic', payload: { id: 'a', completed: true } },
+        ],
+        [
+          successState([aDone]),
+          { type: 'toggleFailed', payload: { id: 'a', previousCompleted: false } },
+        ],
+        [successState([a]), { type: 'deleteOptimistic', payload: { id: 'a' } }],
+        [successState([]), { type: 'deleteFailed', payload: { todo: a, index: 0 } }],
+      ];
+
+      for (const [state, action] of cases) {
+        expect(reducer(state, action)).not.toBe(state);
+      }
+    });
+  });
 });
