@@ -51,9 +51,10 @@ COPY apps/web/ apps/web/
 # tsconfig.base.json is referenced via apps/web/tsconfig.json's `extends`
 COPY tsconfig.base.json ./
 
-# Fail loudly if the build-arg wasn't passed
-RUN test "$NEXT_PUBLIC_API_URL" != "__UNSET__" || \
-    (echo "ERROR: --build-arg NEXT_PUBLIC_API_URL=<base-url> is required" && exit 1)
+# Fail loudly if the build-arg wasn't passed (or was passed empty, which CI's
+# `${{ vars.NEXT_PUBLIC_API_URL }}` substitution does silently for an unset var).
+RUN test -n "$NEXT_PUBLIC_API_URL" && test "$NEXT_PUBLIC_API_URL" != "__UNSET__" || \
+    (echo "ERROR: --build-arg NEXT_PUBLIC_API_URL=<base-url> is required (non-empty)" && exit 1)
 
 RUN npm --workspace apps/web run build
 

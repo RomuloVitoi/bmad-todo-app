@@ -1,6 +1,6 @@
 # Story 1.11: Build and deployment artifacts
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -695,6 +695,49 @@ So that the app can be deployed to any container target and code drift is caught
   - [x] Commit message: `feat(deploy): production Dockerfiles + GHCR CI workflow + reference compose (Story 1.11)`
   - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, or `.env*`.
 
+## Review Findings
+
+Code review on commits `ad5e3ab..141aeae` (2026-04-29). Triage: **2 decision-needed, 0 patches, 27 deferred, 13 dismissed**. Acceptance Auditor confirmed all 6 ACs PASS at diff level. Two findings require human input before this story can move to `done` — see Decision-Needed below.
+
+### Decision Needed (resolved)
+
+- [x] `[Review][Decision]` **CI publish silently bakes `https://api.example.com` into the GHCR `:latest` web image when `vars.NEXT_PUBLIC_API_URL` is unset** — [.github/workflows/ci.yml:106](../../.github/workflows/ci.yml#L106). **Resolution:** dropped the fallback (`${{ vars.NEXT_PUBLIC_API_URL }}`) and tightened the Dockerfile guard at [apps/web/Dockerfile:55-57](../../apps/web/Dockerfile#L55-L57) to also reject empty strings. CI now fails loudly during `docker build` when the variable is unset.
+- [x] `[Review][Decision]` **API port 4000 publicly bound on the host in production compose** — [docker-compose.production.yml:47-48](../../docker-compose.production.yml#L47-L48). **Resolution:** replaced `ports:` with `expose: ["4000"]` for the api service. The api is internal-only on the compose network; `web` reaches it via service DNS. Header comment updated to document the design (operators must add a reverse proxy in front of `web` for any external API access). `PORT_API` env var removed from the documented list.
+
+### Deferred (real but out of scope or pre-existing)
+
+- [x] `[Review][Defer]` README "Reference deployment" Option B `docker compose ... run --rm api ... drizzle-kit migrate` will fail (drizzle-kit is pruned, drizzle.config.ts is not in the image, fastify user can't `npx`-install) but `|| echo` swallows the error [README.md:127-129](../../README.md#L127-L129) — explicitly deferred to a future `apps/api/Dockerfile.migrate` story per Dev Notes; documented as an alternative with operator fallback to Option A.
+- [x] `[Review][Defer]` Hand-maintained denylist of hoisted apps/web prod deps in api Dockerfile (`next`, `@next`, `react`, `react-dom`, `lightningcss`, `sharp`, `tailwindcss`, …); silent image bloat if web grows new prod deps [apps/api/Dockerfile:51-57](../../apps/api/Dockerfile#L51-L57) — acknowledged as Deviation #3 in Dev Notes Debug Log.
+- [x] `[Review][Defer]` `apps/web/next.config.ts` does not set `outputFileTracingRoot`; potential runtime "Cannot find module 'apps/web/server.js'" if Next.js standalone in monorepo emits `server.js` at root path instead of preserving workspace layout [apps/web/next.config.ts](../../apps/web/next.config.ts) — needs CI smoke-test verification (see next item).
+- [x] `[Review][Defer]` No CI smoke-test step actually runs the built images before push — broken `CMD` would still publish to GHCR [.github/workflows/ci.yml:42-67](../../.github/workflows/ci.yml#L42-L67).
+- [x] `[Review][Defer]` Production compose `image: ghcr.io/...` lines are commented out — operators following the README quick-start `docker compose -f docker-compose.production.yml up -d` build locally on the prod host instead of pulling published GHCR images [docker-compose.production.yml:38, 65](../../docker-compose.production.yml).
+- [x] `[Review][Defer]` `:latest` race on concurrent main pushes; no `concurrency:` block on publish job [.github/workflows/ci.yml:69-128](../../.github/workflows/ci.yml#L69-L128).
+- [x] `[Review][Defer]` `packages: write` granted at workflow top-level rather than scoped to publish job only [.github/workflows/ci.yml:11](../../.github/workflows/ci.yml#L11).
+- [x] `[Review][Defer]` Actions pinned by major tag (`@v6`/`@v7`/`@v4`), not full SHA — supply-chain hardening miss [.github/workflows/ci.yml](../../.github/workflows/ci.yml) (multiple).
+- [x] `[Review][Defer]` No SBOM/provenance attestation, no image vulnerability scan in `docker/build-push-action` config [.github/workflows/ci.yml:97-128](../../.github/workflows/ci.yml#L97-L128).
+- [x] `[Review][Defer]` No multi-arch (linux/amd64+arm64) build; published images are amd64-only — emulation/incompatibility on Apple Silicon, AWS Graviton, Hetzner ARM hosts [.github/workflows/ci.yml](../../.github/workflows/ci.yml).
+- [x] `[Review][Defer]` No `concurrency: cancel-in-progress` on PR verify job — wasted CI minutes on rapid pushes [.github/workflows/ci.yml](../../.github/workflows/ci.yml).
+- [x] `[Review][Defer]` Per-app `apps/api/.dockerignore` and `apps/web/.dockerignore` files are dead — `context: .` (repo root) consults only the root `.dockerignore`, never the per-app ones; entries like `apps/api/test/`, `**/*.test.ts` are not honored [apps/api/.dockerignore](../../apps/api/.dockerignore), [apps/web/.dockerignore](../../apps/web/.dockerignore) — spec asked for them; out-of-spec to remove now.
+- [x] `[Review][Defer]` Root `.dockerignore` missing `coverage/`, `.vscode/`, `.idea/`, `*.tsbuildinfo`, `.DS_Store` — bigger build context than necessary [.dockerignore](../../.dockerignore).
+- [x] `[Review][Defer]` `.dockerignore` excludes `**/.env*` (correctly — secrets) but README tells operators to create `.env.production`; potential confusion may lead operator to remove the exclude and bake real `.env` into the image [.dockerignore:5-6](../../.dockerignore#L5-L6), [README.md:117](../../README.md#L117).
+- [x] `[Review][Defer]` No read-only filesystem, `cap_drop`, `security_opt: no-new-privileges`, or `tmpfs` on services — hardening miss in a "production reference" file [docker-compose.production.yml](../../docker-compose.production.yml).
+- [x] `[Review][Defer]` No `mem_limit`, `cpus`, or `pids_limit` resource constraints on services — single-host VPS deployments have no backstop against memory leaks → OOM-killer cascade [docker-compose.production.yml](../../docker-compose.production.yml).
+- [x] `[Review][Defer]` No `tini`/`dumb-init` for PID-1 init in either runtime image; Node handles SIGTERM via app handlers but does not reap zombie children [apps/api/Dockerfile](../../apps/api/Dockerfile), [apps/web/Dockerfile](../../apps/web/Dockerfile).
+- [x] `[Review][Defer]` Web container has no healthcheck — compose's `service_healthy` works for `api → web` but no liveness signal for fronting reverse proxy or orchestrator [docker-compose.production.yml:55-72](../../docker-compose.production.yml#L55-L72).
+- [x] `[Review][Defer]` API healthcheck depends on DB (`/health` returns 503 if `SELECT 1` fails); a transient DB blip flips api unhealthy and cascades — liveness/readiness conflated [docker-compose.production.yml:52-57](../../docker-compose.production.yml#L52-L57).
+- [x] `[Review][Defer]` Bare `fetch()` in api healthcheck has no per-call timeout; relies on docker `timeout: 5s` to kill hung node invocation; ~100ms cold start per probe [docker-compose.production.yml:53](../../docker-compose.production.yml#L53).
+- [x] `[Review][Defer]` `depends_on: condition: service_healthy` makes web hang forever if api never goes healthy (e.g., DATABASE_URL typo); no compose-level timeout [docker-compose.production.yml:72-74](../../docker-compose.production.yml#L72-L74).
+- [x] `[Review][Defer]` `restart: unless-stopped` + fail-fast schema-drift exit = restart loop without back-off if operator forgets pre-deploy migration [docker-compose.production.yml](../../docker-compose.production.yml).
+- [x] `[Review][Defer]` Production compose volume `todo-app-db-data` shares its name with the dev compose volume — cross-environment data corruption risk if both stacks run on the same host [docker-compose.production.yml:24, 76-77](../../docker-compose.production.yml#L24).
+- [x] `[Review][Defer]` Builder stage `COPY --from=deps /app/apps/api/node_modules` may break if a future npm/lockfile change hoists everything (no per-workspace dir to copy) [apps/api/Dockerfile:35](../../apps/api/Dockerfile#L35).
+- [x] `[Review][Defer]` Builder stage compiles test files into `dist/` if `apps/api/tsconfig.json` doesn't `exclude` `**/*.test.ts` (combined with the dead per-app .dockerignore, test fixtures slip through) [apps/api/Dockerfile:40](../../apps/api/Dockerfile#L40).
+- [x] `[Review][Defer]` README example writes `POSTGRES_PASSWORD=<strong-password>` to `.env.production` plaintext without `chmod 600` or secret-manager guidance [README.md:117-124](../../README.md#L117-L124).
+- [x] `[Review][Defer]` `apps/api/node_modules` copied into runtime stage but not acknowledged in Dev Notes Debug Log Deviation #2 (which only mentions builder stages) — documentation transparency [apps/api/Dockerfile:76](../../apps/api/Dockerfile#L76).
+
+### Dismissed (false positives + cosmetic noise)
+
+13 findings dismissed (not enumerated to keep this section signal-rich): GitHub Action major-version availability (verified `actions/checkout@v6.0.2`, `setup-node@v6.4.0`, `build-push-action@v7.1.0`, `login-action@v4.1.0`, `metadata-action@v6.0.0`, `setup-buildx-action@v4.0.0` all exist as of 2026-04); concern that API binds to `127.0.0.1` (verified `apps/api/src/server.ts:75` binds `0.0.0.0`); cosmetic spec deviations the Acceptance Auditor flagged but the spec itself doesn't pin (README placement, `packages/shared/node_modules` builder COPY omission, dropped node-user comment); `tsc` prepare-hook ordering concern (npm runs prepares after install completes); `NODE_ENV` duplicated harmlessly between Dockerfile ENV and compose env; sentinel checked after COPY (cosmetic perf only); CORS_ORIGIN single-valued (out of story scope); pg_isready first-boot race (ephemeral, self-healing); compose service_healthy timing (LOW, acceptable).
+
 ## Dev Notes
 
 ### Where this story sits
@@ -924,3 +967,4 @@ claude-opus-4-7 (1M context)
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Initial implementation (commit `ad5e3ab`): web + api Dockerfiles, .dockerignores, docker-compose.production.yml, GHCR CI workflow, README "Deployment" section, Next.js standalone config. Implementation deviations vs spec documented in Debug Log References. |
+| 2026-04-29 | Code review (Run 2): 2 decision-needed resolved as patches; 27 deferred to `deferred-work.md`; 13 dismissed. Patches: (1) drop `https://api.example.com` fallback in CI publish + tighten web Dockerfile guard to reject empty strings, (2) replace api `ports:` with `expose:` so api is internal-only on the compose network. Status: review → done. |

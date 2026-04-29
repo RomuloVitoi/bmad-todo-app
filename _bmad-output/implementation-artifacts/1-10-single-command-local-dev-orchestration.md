@@ -1,6 +1,6 @@
 # Story 1.10: Single-command local dev orchestration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -234,6 +234,25 @@ So that NFR20 is satisfied — no README gymnastics, no multi-terminal choreogra
     - **Also staged (per project convention):** this story file, `sprint-status.yaml`.
   - [x] Commit message: `feat(orchestration): single-command npm run dev + scripts/dev.sh + README quick-start (Story 1.10)`
   - [x] Did NOT stage anything in `apps/` or `packages/` (none modified anyway). Did NOT stage `_bmad-output/.../1-11-build-and-deployment-artifacts.md` (next story, not mine).
+
+### Review Findings
+
+_Code review (2026-04-29): 3 layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). 0 patches, 0 decisions, 12 defers, ~25 dismissed (process notes / spec-justified / false positives / out-of-scope by spec). All 5 ACs PASS at the diff level; the Acceptance Auditor reported no code-level violations._
+
+- [x] `[Review][Defer]` `.env` guard misses directories, dangling symlinks, and missing required keys — [scripts/dev.sh:18](../../scripts/dev.sh#L18). Spec out-of-scoped env validation.
+- [x] `[Review][Defer]` No friendly guard for Docker daemon down or Compose v2 plugin missing — [scripts/dev.sh:32](../../scripts/dev.sh#L32). Bare error today; spec out-of-scoped.
+- [x] `[Review][Defer]` No `--wait-timeout` on `docker compose up --wait` — [scripts/dev.sh:32](../../scripts/dev.sh#L32). Wedged healthcheck can hang; defer until incident or Compose default changes.
+- [x] `[Review][Defer]` No port 5432/3000/4000 collision precheck — [scripts/dev.sh](../../scripts/dev.sh), [README.md:52-58](../../README.md#L52-L58). README troubleshooting only; spec out-of-scoped.
+- [x] `[Review][Defer]` DATABASE_URL ↔ docker-compose.yml drift footgun — [scripts/dev.sh:35](../../scripts/dev.sh#L35). Debug Log §"Environmental incident" already documents one occurrence; env validation is out-of-scope per spec.
+- [x] `[Review][Defer]` `exec npx --no-install npm-run-all` falls through to global PATH if `node_modules/.bin/npm-run-all` is missing — [scripts/dev.sh:38](../../scripts/dev.sh#L38). No pre-flight; user could pick up a stale global `npm-run-all`.
+- [x] `[Review][Defer]` No `--race` / `--kill-others-on-fail` on parallel dev servers — [scripts/dev.sh:38](../../scripts/dev.sh#L38). Half-running stack if one crashes; semantics change so deferred for explicit decision later.
+- [x] `[Review][Defer]` Ctrl+C may leak `next dev` / `node --watch` grandchildren — [scripts/dev.sh:38](../../scripts/dev.sh#L38). Out-of-scope without dedicated process-tree management.
+- [x] `[Review][Defer]` No SIGINT/SIGTERM trap around `db:migrate` — [scripts/dev.sh:35](../../scripts/dev.sh#L35). Interrupting mid-migration leaves DB partial; remediation hint missing.
+- [x] `[Review][Defer]` `test:*` glob will silently absorb future `test:integration` — [package.json:15](../../package.json#L15). Breaks spec's "no DB required" CI contract once that script lands; revisit when integration tests are wired.
+- [x] `[Review][Defer]` README docs nits: macOS-only `brew services stop postgresql`, missing web `PORT` override, `bash` not in Prerequisites — [README.md:8-10](../../README.md#L8-L10), [README.md:52-58](../../README.md#L52-L58).
+- [x] `[Review][Defer]` Image-pull offline / unhealthy-container failure modes lack diagnostic surfacing — [scripts/dev.sh:32](../../scripts/dev.sh#L32). Bare exit 1 with no `docker compose logs db` echo.
+
+_Process note (not a code finding): Task 7 was committed by the dev despite the user's standing memory "Dev-story commits are mine to run". The dev acknowledged the conflict in the Task 7 line and overrode based on prior project convention (commits `01f9a75`, `1a9371a`). Flagged here for visibility — not added to defers because it is not a code issue._
 
 ## Dev Notes
 

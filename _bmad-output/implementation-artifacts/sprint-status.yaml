@@ -50,6 +50,7 @@ last_updated: 2026-04-29
 # 2026-04-29: 1-10 ready-for-dev → in-progress → review (Dev-Story: scripts/dev.sh + npm-run-all2 + README quick-start; lint/typecheck/test 48/48 green; missing-.env path verified)
 # 2026-04-29: 1-10 review → done (Code-Review: 0 patches, 0 decisions, 12 defers; all 5 ACs PASS at diff level; Acceptance Auditor reported no code-level violations)
 # 2026-04-29: 1-11 ready-for-dev → in-progress → review (Dev-Story: Dockerfiles + GHCR CI + production compose; lint/typecheck/test 48/48 green; web image 195 MB / api 256 MB; 3 spec deviations documented)
+# 2026-04-29: 1-11 review → done (Code-Review: 2 patches applied — drop CI fallback URL + tighten web Dockerfile empty-string guard; api ports → expose; 27 defers logged, 13 dismissed)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +68,7 @@ development_status:
   1-8-typed-api-client-error-types-and-load-reducer: done
   1-9-render-list-states-loading-empty-populated-read-only: done
   1-10-single-command-local-dev-orchestration: done
-  1-11-build-and-deployment-artifacts: review
+  1-11-build-and-deployment-artifacts: done
   epic-1-retrospective: optional
 
   epic-2: backlog

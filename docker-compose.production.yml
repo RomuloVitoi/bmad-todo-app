@@ -10,7 +10,11 @@
 #   DATABASE_URL          (api → db; postgres://user:pass@db:5432/dbname)
 #   CORS_ORIGIN           (api; e.g., https://todos.example.com)
 #   NEXT_PUBLIC_API_URL   (web; build-time, baked into image)
-#   PORT_WEB, PORT_API    (host port bindings; defaults below)
+#   PORT_WEB              (host port for web; default 3000)
+#
+# The api service is intentionally NOT host-exposed via `ports:` — it is
+# reachable from `web` (and `db`) on the internal compose network only.
+# Add a reverse proxy in front of `web` to terminate TLS / route /api/*.
 
 services:
   db:
@@ -44,8 +48,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       NODE_ENV: production
       ENABLE_DOCS: ${ENABLE_DOCS:-false}
-    ports:
-      - "${PORT_API:-4000}:4000"
+    expose:
+      - "4000"
     depends_on:
       db:
         condition: service_healthy
