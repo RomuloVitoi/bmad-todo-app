@@ -1,6 +1,6 @@
 # Story 2.1: POST /todos endpoint
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -429,3 +429,21 @@ claude-opus-4-7 (1M context) — `/bmad-dev-story` workflow.
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 1 (kicks off Epic 2 from `backlog` → `in-progress`). |
 | 2026-04-29 | Story implemented via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Tasks 1–5 complete; Task 6 (commit) pending. POST /todos endpoint live with `.strict()` validation, server-assigned `id`/`createdAt`, integration tests 24/24 green, /docs documents both GET and POST under the `todos` tag. |
+| 2026-04-29 | Code review via `/bmad-code-review` on commits `c9ec25a..a94e6cc`. Triage: 0 decision-needed, 1 patch applied, 6 deferred, 10 dismissed. Acceptance Auditor: all 7 ACs PASS. Patch: removed misleading "Concurrency model: LWW" phrase from POST /todos OpenAPI description. Status: review → done. |
+
+## Review Findings
+
+Code review on commits `c9ec25a..a94e6cc` (2026-04-29). Triage: **0 decision-needed, 1 patch, 6 deferred, 10 dismissed**. Acceptance Auditor: **all 7 ACs PASS** at diff level — no spec deviations, no watch-outs violated, no narrative-vs-code contradictions.
+
+### Patches (unresolved action items)
+
+- [x] `[Review][Patch]` **POST /todos `description` claims "Concurrency model: last-write-wins (LWW)"** — [apps/api/src/routes/todos.ts:48-50](../../apps/api/src/routes/todos.ts#L48-L50). LWW is a meaningful claim about UPDATE semantics; this endpoint only INSERTs. The phrase ships in the OpenAPI doc to API consumers and is misleading. **Resolution:** replaced the LWW sentence with `No idempotency-key in v1; repeated requests insert distinct rows.` — keeps the idempotency note (still relevant for create) and pins the actual repeat-request behavior. Lint/typecheck clean post-edit.
+
+### Deferred (real but out of scope or pre-existing)
+
+- [x] `[Review][Defer]` **`createdAt` regex doesn't pin timezone or full ISO-8601 format** — [apps/api/test/integration/todos.int.test.ts:99](../../apps/api/test/integration/todos.int.test.ts#L99). Regex `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/` matches local-time emissions; a regression away from `toISOString()` would not be caught. AC #1 promises "ISO-8601" verbatim. Low risk — `toWire` always calls `.toISOString()` — but worth tightening alongside other contract assertions.
+- [x] `[Review][Defer]` **Negative tests assert status code only, not validation message/path** — [apps/api/test/integration/todos.int.test.ts:120-176](../../apps/api/test/integration/todos.int.test.ts#L120-L176). A regression where the schema rejects valid input for the wrong reason (broken `.trim()`, length cap moved) would still produce 400 silently. At least one negative test should pin the validation `message` content.
+- [x] `[Review][Defer]` **No test for missing `text` field entirely (`payload: {}`)** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Schema enforces `required` so the boundary is real but unverified. Most common client bug (forgetting the field) is uncovered. Add when 2.2/2.3 PATCH/DELETE land and similar coverage is needed.
+- [x] `[Review][Defer]` **No test for wrong/missing `Content-Type`** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Fastify behavior here depends on parser config; the contract is undocumented. Pre-existing pattern (GET tests don't cover it either). Revisit when error-envelope tests get a dedicated story.
+- [x] `[Review][Defer]` **No test verifying response schema strips additional fields** — [apps/api/src/routes/todos.ts:51](../../apps/api/src/routes/todos.ts#L51). Without `removeAdditional` configured globally, a future internal column accidentally returned by `toWire` would leak. Same concern applies to GET /todos — pre-existing, orthogonal to Story 2.1's scope. Revisit alongside a global Fastify serializer audit.
+- [x] `[Review][Defer]` **NUL byte (` `) in `text` produces 500 instead of 400** — [packages/shared/src/contracts.ts:14-18](../../packages/shared/src/contracts.ts#L14-L18). Postgres rejects NUL in `text` columns with SQLSTATE 22021; the global error handler turns this into a 500. Architecture says validation lives at the API boundary (Zod), but `CreateTodoRequestSchema` doesn't refine against NUL. v1 tolerates 5xx from hostile input via the global error handler; harden alongside other Zod refinements when toasts cover mutation-failure UX (Story 3.2).

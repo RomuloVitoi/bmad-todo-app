@@ -2,6 +2,17 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-1 (2026-04-29)
+
+### Story 2.1 — POST /todos endpoint (commits `c9ec25a..a94e6cc`)
+
+- **`createdAt` regex doesn't pin timezone or full ISO-8601 format** — [apps/api/test/integration/todos.int.test.ts:99](../../apps/api/test/integration/todos.int.test.ts#L99). Regex `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/` matches local-time emissions; a regression away from `toISOString()` would not be caught. AC #1 promises "ISO-8601" verbatim. Low risk — `toWire` always calls `.toISOString()` — but worth tightening alongside other contract assertions.
+- **Negative tests assert status code only, not validation message/path** — [apps/api/test/integration/todos.int.test.ts:120-176](../../apps/api/test/integration/todos.int.test.ts#L120-L176). A regression where the schema rejects valid input for the wrong reason (broken `.trim()`, length cap moved) would still produce 400 silently. At least one negative test should pin the validation `message` content.
+- **No test for missing `text` field entirely (`payload: {}`)** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Schema enforces `required` so the boundary is real but unverified. Most common client bug (forgetting the field) is uncovered. Add when 2.2/2.3 PATCH/DELETE land and similar coverage is needed.
+- **No test for wrong/missing `Content-Type`** — [apps/api/test/integration/todos.int.test.ts](../../apps/api/test/integration/todos.int.test.ts). Fastify behavior here depends on parser config; the contract is undocumented. Pre-existing pattern (GET tests don't cover it either). Revisit when error-envelope tests get a dedicated story.
+- **No test verifying response schema strips additional fields** — [apps/api/src/routes/todos.ts:51](../../apps/api/src/routes/todos.ts#L51). Without `removeAdditional` configured globally, a future internal column accidentally returned by `toWire` would leak. Same concern applies to GET /todos — pre-existing, orthogonal to Story 2.1's scope. Revisit alongside a global Fastify serializer audit.
+- **NUL byte (` `) in `text` produces 500 instead of 400** — [packages/shared/src/contracts.ts:14-18](../../packages/shared/src/contracts.ts#L14-L18). Postgres rejects NUL in `text` columns with SQLSTATE 22021; the global error handler turns this into a 500. Architecture says validation lives at the API boundary (Zod), but `CreateTodoRequestSchema` doesn't refine against NUL. v1 tolerates 5xx from hostile input via the global error handler; harden alongside other Zod refinements when toasts cover mutation-failure UX (Story 3.2).
+
 ## Deferred from: code review of story 1-11 (2026-04-29)
 
 ### Story 1.11 — build & deployment artifacts (commits `ad5e3ab..141aeae`)

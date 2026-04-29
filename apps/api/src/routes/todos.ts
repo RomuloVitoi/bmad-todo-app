@@ -43,7 +43,7 @@ const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => 
         description:
           'Creates a single todo. Server assigns `id` (uuid) and `createdAt` (ISO-8601). ' +
           'Body is validated against `CreateTodoRequestSchema` — `.strict()` rejects unknown ' +
-          'fields with 400. Concurrency model: last-write-wins (LWW); no idempotency-key in v1.',
+          'fields with 400. No idempotency-key in v1; repeated requests insert distinct rows.',
         body: CreateTodoRequestSchema,
         response: { 201: TodoSchema },
       },
