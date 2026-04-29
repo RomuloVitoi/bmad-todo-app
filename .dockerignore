@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.env*
+!**/.env.example
+.git
+.github
+_bmad/
+_bmad-output/
+docs/
+*.log

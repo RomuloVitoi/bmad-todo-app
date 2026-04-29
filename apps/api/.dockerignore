@@ -1,0 +1,10 @@
+node_modules
+dist
+.env*
+!.env.example
+Dockerfile
+.dockerignore
+test/
+*.test.ts
+*.test.js
+*.log

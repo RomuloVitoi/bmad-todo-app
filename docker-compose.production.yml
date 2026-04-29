@@ -1,0 +1,77 @@
+# docker-compose.production.yml — Reference deployment for the full stack.
+#
+# NOT used in local development (that's docker-compose.yml + npm run dev).
+# Run with:  docker compose -f docker-compose.production.yml up -d
+#
+# Pre-deploy: run drizzle-kit migrate against DATABASE_URL — see README "Deployment".
+#
+# Required env vars (set in shell or .env.production):
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+#   DATABASE_URL          (api → db; postgres://user:pass@db:5432/dbname)
+#   CORS_ORIGIN           (api; e.g., https://todos.example.com)
+#   NEXT_PUBLIC_API_URL   (web; build-time, baked into image)
+#   PORT_WEB, PORT_API    (host port bindings; defaults below)
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB required}
+    volumes:
+      - todo-app-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    # Built locally for reference; production deployments pull from GHCR
+    # (see .github/workflows/ci.yml). Override with `image:` to use a tag.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    # image: ghcr.io/<owner>/todo-app-api:latest    # uncomment for GHCR deploy
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN required}
+      PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: production
+      ENABLE_DOCS: ${ENABLE_DOCS:-false}
+    ports:
+      - "${PORT_API:-4000}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL required at build time}
+    # image: ghcr.io/<owner>/todo-app-web:latest    # uncomment for GHCR deploy
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${PORT_WEB:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  todo-app-db-data:

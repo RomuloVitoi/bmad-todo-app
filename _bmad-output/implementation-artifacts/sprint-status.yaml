@@ -48,6 +48,8 @@ last_updated: 2026-04-29
 # 2026-04-29: 1-9 ready-for-dev → in-progress → review (Dev-Story: TodoList + TodoItem; 19/19 web tests; 0 lint warnings)
 # 2026-04-29: 1-9 review → done (Code-Review: 1 patch applied — TodoList exhaustiveness guard; 3 defers logged; AC auditor 8/8 pass)
 # 2026-04-29: 1-10 ready-for-dev → in-progress → review (Dev-Story: scripts/dev.sh + npm-run-all2 + README quick-start; lint/typecheck/test 48/48 green; missing-.env path verified)
+# 2026-04-29: 1-10 review → done (Code-Review: 0 patches, 0 decisions, 12 defers; all 5 ACs PASS at diff level; Acceptance Auditor reported no code-level violations)
+# 2026-04-29: 1-11 ready-for-dev → in-progress → review (Dev-Story: Dockerfiles + GHCR CI + production compose; lint/typecheck/test 48/48 green; web image 195 MB / api 256 MB; 3 spec deviations documented)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -64,8 +66,8 @@ development_status:
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
   1-8-typed-api-client-error-types-and-load-reducer: done
   1-9-render-list-states-loading-empty-populated-read-only: done
-  1-10-single-command-local-dev-orchestration: review
-  1-11-build-and-deployment-artifacts: ready-for-dev
+  1-10-single-command-local-dev-orchestration: done
+  1-11-build-and-deployment-artifacts: review
   epic-1-retrospective: optional
 
   epic-2: backlog
