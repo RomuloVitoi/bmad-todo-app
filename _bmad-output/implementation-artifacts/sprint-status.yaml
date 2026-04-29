@@ -51,6 +51,10 @@ last_updated: 2026-04-29
 # 2026-04-29: 1-10 review → done (Code-Review: 0 patches, 0 decisions, 12 defers; all 5 ACs PASS at diff level; Acceptance Auditor reported no code-level violations)
 # 2026-04-29: 1-11 ready-for-dev → in-progress → review (Dev-Story: Dockerfiles + GHCR CI + production compose; lint/typecheck/test 48/48 green; web image 195 MB / api 256 MB; 3 spec deviations documented)
 # 2026-04-29: 1-11 review → done (Code-Review: 2 patches applied — drop CI fallback URL + tighten web Dockerfile empty-string guard; api ports → expose; 27 defers logged, 13 dismissed)
+# 2026-04-29: epic-2 backlog → in-progress (Create-Story: first story 2-1 created)
+# 2026-04-29: 2-1 backlog → ready-for-dev (Create-Story: POST /todos endpoint + integration tests; ~120 LOC across 3 files)
+# 2026-04-29: 2-1 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-04-29: 2-1 in-progress → review (Dev-Story: POST /todos endpoint + 9 integration tests; lint/typecheck/test 48/48 + integration 24/24 green; /docs renders POST /todos under the todos tag)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -71,8 +75,8 @@ development_status:
   1-11-build-and-deployment-artifacts: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-post-todos-endpoint: backlog
+  epic-2: in-progress
+  2-1-post-todos-endpoint: review
   2-2-patch-todos-id-endpoint-with-lww-semantics: backlog
   2-3-delete-todos-id-endpoint: backlog
   2-4-reducer-extensions-for-optimistic-mutations: backlog
