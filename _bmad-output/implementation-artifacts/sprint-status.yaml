@@ -38,6 +38,10 @@ generated: 2026-04-19
 last_updated: 2026-04-29
 # 2026-04-29: 1-8 ready-for-dev → in-progress → review
 # 2026-04-29: 1-1 review → done (Run 2 review: 7 patches applied, 5 defers logged)
+# 2026-04-29: 1-2 review → done (Run 2 review: 0 patches, 5 defers — all ACs met, tightening = future scope)
+# 2026-04-29: 1-3 review → done (Run 2 review: 0 patches, 3 defers — all ACs met, hardening out of scope)
+# 2026-04-29: 1-4 review → done (Run 2 review: 2 patches applied — drizzleDir resolution, .gitattributes scope)
+# 2026-04-29: 1-8 review → done (Run 2 review: 2 patches applied — JSON/Zod parse → ApiError, refetch signal)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -46,13 +50,13 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 development_status:
   epic-1: in-progress
   1-1-scaffold-monorepo-workspace: done
-  1-2-define-the-shared-todo-contract: review
-  1-3-provision-local-postgres-via-docker-compose: review
-  1-4-api-data-layer-drizzle-schema-migration-client-fail-fast-check: review
+  1-2-define-the-shared-todo-contract: done
+  1-3-provision-local-postgres-via-docker-compose: done
+  1-4-api-data-layer-drizzle-schema-migration-client-fail-fast-check: done
   1-5-get-todos-endpoint-with-full-plugin-stack-and-observability: done
   1-6-health-and-docs-endpoints: done
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
-  1-8-typed-api-client-error-types-and-load-reducer: review
+  1-8-typed-api-client-error-types-and-load-reducer: done
   1-9-render-list-states-loading-empty-populated-read-only: backlog
   1-10-single-command-local-dev-orchestration: backlog
   1-11-build-and-deployment-artifacts: backlog

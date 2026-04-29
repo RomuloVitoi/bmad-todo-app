@@ -25,7 +25,26 @@ export async function getTodos(signal?: AbortSignal): Promise<Todo[]> {
     throw await ApiError.fromResponse(response);
   }
 
-  const body = await response.json();
-  const parsed = TodoListResponseSchema.parse(body);
-  return parsed.todos;
+  const responseRequestId = response.headers.get('x-request-id') ?? requestId;
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Malformed JSON in successful response',
+      requestId: responseRequestId,
+    });
+  }
+
+  const parsed = TodoListResponseSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Response did not match the expected todos schema',
+      requestId: responseRequestId,
+    });
+  }
+  return parsed.data.todos;
 }

@@ -33,11 +33,12 @@ export default function TodoApp() {
     // no state transition to 'error') per Architecture §Retry.
     const onVisibility = (): void => {
       if (document.visibilityState !== 'visible') return;
-      getTodos().then(
+      getTodos(controller.signal).then(
         (todos) => {
           if (!cancelled) dispatch({ type: 'loadSuccess', payload: todos });
         },
         (err) => {
+          if (err instanceof Error && err.name === 'AbortError') return;
           console.warn('todos refetch failed (silent)', err);
         },
       );

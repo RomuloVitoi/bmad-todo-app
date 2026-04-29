@@ -5,7 +5,7 @@
 // compares to the hashes recorded in the DB's `drizzle.__drizzle_migrations` table.
 // Exit 0 when applied state matches journal; exit 1 (with details) on any drift.
 //
-// Must be invoked from the `apps/api/` directory (the `db:check` npm script does this).
+// Resolves `drizzle/` relative to this module so the script works from any cwd.
 
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -25,7 +25,7 @@ interface Journal {
   entries: JournalEntry[];
 }
 
-const drizzleDir = join(process.cwd(), 'drizzle');
+const drizzleDir = join(import.meta.dirname, '..', '..', 'drizzle');
 
 async function readJournal(): Promise<Journal> {
   const journalPath = join(drizzleDir, 'meta', '_journal.json');

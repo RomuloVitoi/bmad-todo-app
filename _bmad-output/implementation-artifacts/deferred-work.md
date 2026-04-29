@@ -2,6 +2,41 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of stories 1-2, 1-3, 1-4, 1-8 (2026-04-29, Run 2)
+
+### Story 1.2 — Zod contracts (commit `c2168ca`)
+
+- **Tighten `error`/`message` to `.min(1)` and `statusCode` to `.gte(100).lte(599)`** — ErrorResponseSchema accepts empty strings and out-of-band status codes today. Spec defines them as bare types; tightening = future hardening.
+- **Add export-surface pin test** — no test asserts that exactly 5 schemas + 5 inferred types are exported; an accidental future export slips through.
+- **ZodError predicate-form assertions** — `assert.throws(..., z.ZodError)` doesn't pin which field caused the failure; tighten to `(e) => e.issues[0].path[0] === 'id'` form.
+- **Top-level non-object input tests** — null/undefined/array/primitive at the schema root are untested for TodoSchema, CreateTodoRequestSchema, UpdateTodoRequestSchema, ErrorResponseSchema.
+- **ISO datetime edge cases** — no explicit test for `+00:00` offset, microsecond precision, or missing-`Z`.
+
+### Story 1.3 — docker-compose Postgres (commits `356ac02` + `976faa2`)
+
+- **Pin `postgres:17-alpine` to a digest (`@sha256:...`)** — minor patch-version drift today; revisit if a deployed-image story lands.
+- **Make host port configurable via `${HOST_DB_PORT:-5432}`** — currently hard-coded; the historical 5433 detour shows the collision is real.
+- **Postgres tuning knobs (`shm_size`, `logging.options.max-size`, `ulimits`)** — none needed at v1 scale.
+
+### Story 1.4 — Drizzle data layer (commit `bd1954f` + `9f2c763`)
+
+- **Pool config (`max`, timeouts, SSL)** [apps/api/src/db/client.ts] — production tuning; Story 1.5+ handles when the API serves real traffic.
+- **Migration drift checker has zero unit tests** [apps/api/src/db/migrate.ts] — needs a real DB or heavy mock harness; defer until api-app test infra lands.
+- **Concurrent `db:check` invocations have no advisory lock** — acceptable for single-developer dev loop; revisit when CI parallelism lands.
+- **No `--> statement-breakpoint` discipline** — single-statement migration is fine; future multi-statement migrations should enforce.
+- **Export `Todo`/`TodoRow` named type from `client.ts`** — handlers re-derive via TS inference today; export when the second handler lands.
+
+### Story 1.8 — typed API client + reducer (commit `33d63b8`)
+
+- **Explicit fetch timeout via `AbortSignal.timeout(...)` composed with caller's signal** [apps/web/src/lib/api.ts] — hung server keeps the user in `loading` indefinitely; spec doesn't mandate a deadline.
+- **`crypto.randomUUID()` polyfill for non-secure contexts** — works in current targets; revisit if deploy story expands browser baseline.
+- **No tests for `TodoApp.tsx`** (visibilitychange handler, AbortError swallow path, cancelled-flag race) — vitest config uses `environment: 'node'`; React component tests need jsdom + RTL devDeps. Belongs in a dedicated test-infra story.
+- **No tests for `ApiError.fromResponse` non-JSON-body and CORS-stripped-`x-request-id` paths** — coverage hardening, not blocking.
+- **`ErrorResponseSchema.safeParse` with `.strict()` drops the server's `message` when the body adds an unknown field** — relaxing this requires a contract decision (spec defines `.strict()` in Story 1.2). Couple to a later schema-evolution discussion.
+- **Reducer `loadStart` wipes `todos` and `loadError` clears them** — current behavior is unreached today (visibility refetch silently ignores failures and skips `loadStart`); a future retry button would flicker the list. Decide on stale-while-revalidate semantics when Story 3.3+ wires retry.
+- **`aria-live="polite"` on the placeholder always announces** — should gate to loading/error transitions; minor a11y polish for a later UX story.
+- **`@vitest/ui` shipped as devDep but no `test:ui` script** — add the script or drop the dep; cosmetic.
+
 ## Deferred from: code review of story 1-1 (2026-04-29, Run 2)
 
 ### Story 1.1 — monorepo scaffold (commit `9e4570e`, hand-rolled chunk only)

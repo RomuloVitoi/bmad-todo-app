@@ -1,6 +1,6 @@
 # Story 1.8: Typed API client, error types, and load reducer
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -765,3 +765,22 @@ Claude Opus 4.7 (1M context) — claude-opus-4-7[1m]
 | ---- | ------ | ------ |
 | 2026-04-29 | Claude Opus 4.7 (Create-Story) | Story 1.8 contexted; status `backlog` → `ready-for-dev`. |
 | 2026-04-29 | Claude Opus 4.7 (Dev-Story) | Implemented Story 1.8 (Tasks 1–10). Added Vitest 2.1 + `vite-tsconfig-paths`; authored `apps/web/src/lib/{api,errors,reducer}.ts` and matching `*.test.ts`; wired `<TodoApp />` to `useReducer` + visibilitychange refetch with silent-failure logging. All sanity gates green: tsc, eslint, vitest 9/9, next build, packages/shared 25/25, apps/api 19/19. Status `ready-for-dev` → `in-progress` → `review`. Note: `vitest.config.ts` renamed to `.mts` to load `vite-tsconfig-paths` as ESM without forcing `"type": "module"` on apps/web. Task 11 (commit) and the manual end-to-end smoke test deferred to user. |
+| 2026-04-29 | Claude Opus 4.7 (Reviewer) | Run 2 (3-agent chunked review of `33d63b8`, 427 lines): Acceptance Auditor confirmed all 7 ACs pass; Blind+Edge surfaced ~55 findings. 2 patches applied: (a) wrap `response.json()` and `TodoListResponseSchema.parse()` on the success path so SyntaxError/ZodError convert to `ApiError` carrying `requestId` from response headers [api.ts]; (b) pass `controller.signal` to the visibility-refetch `getTodos()` call so unmount actually aborts the in-flight request [TodoApp.tsx]. Lint + tsc clean. Status: `review` → `done`. |
+
+### Review Findings (Run 2)
+
+**Patches applied:**
+
+- [x] [Review][Patch] Wrap `response.json()` and `TodoListResponseSchema.parse()` on success path; convert errors to `ApiError` with `requestId` from response headers [apps/web/src/lib/api.ts] — currently a malformed-JSON 200 or a contract-drift body throws raw `SyntaxError`/`ZodError`, bypassing the `ApiError` envelope and losing the server's `x-request-id` correlation.
+- [x] [Review][Patch] Pass `controller.signal` to the visibility-refetch `getTodos()` call [apps/web/src/components/TodoApp.tsx] — controller is aborted on unmount but the refetch path didn't use the signal, so requests kept running to the server with results discarded by the `cancelled` flag.
+
+**Deferred (real but spec-compliant or out of Story 1.8 scope):**
+
+- [x] [Review][Defer] Add an explicit fetch timeout via `AbortSignal.timeout(...)` composed with the caller's signal [apps/web/src/lib/api.ts] — a hung server keeps the user in `loading` indefinitely; spec doesn't mandate a deadline.
+- [x] [Review][Defer] `crypto.randomUUID()` polyfill for non-secure contexts (older Safari, file://, jsdom test envs without a DOM) [apps/web/src/lib/api.ts] — works in current targets; revisit if the deploy story expands browser baseline.
+- [x] [Review][Defer] No tests for `TodoApp.tsx` (visibilitychange handler, AbortError swallow path, cancelled-flag race) [apps/web/src/components/TodoApp.tsx] — vitest config currently uses `environment: 'node'`; React component tests need jsdom + RTL devDeps. Belongs in a dedicated test-infrastructure story.
+- [x] [Review][Defer] No tests for `ApiError.fromResponse` non-JSON-body and CORS-stripped-`x-request-id` paths [apps/web/src/lib/errors.ts] — coverage hardening; not blocking.
+- [x] [Review][Defer] `ErrorResponseSchema.safeParse` with `.strict()` drops the server's `message` when the body adds an unknown field [apps/web/src/lib/errors.ts] — relaxing this requires a contract decision (spec defines it as `.strict()` in Story 1.2). Couple to a later schema-evolution discussion.
+- [x] [Review][Defer] Reducer `loadStart` wipes `todos` and `loadError` clears them — current behavior is unreached today (visibility refetch silently ignores failures and skips `loadStart`), but a future retry button or pull-to-refresh would flicker the list. Decide on stale-while-revalidate semantics when Story 3.3+ wires retry.
+- [x] [Review][Defer] `aria-live="polite"` on the placeholder always announces — should gate to loading/error transitions; minor a11y polish for a later UX story.
+- [x] [Review][Defer] `@vitest/ui` shipped as devDep but no `test:ui` script — add the script or drop the dep; cosmetic.
