@@ -50,3 +50,33 @@ test('PATCH /todos/:id — concurrent opposite writes both succeed; final state 
     'final completed must be a boolean',
   );
 });
+
+test('DELETE /todos/:id — concurrent deletes: exactly one 204, one 404, row removed once (AC #5)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'race to delete' },
+  });
+  assert.equal(created.statusCode, 201);
+  const { id } = created.json() as { id: string };
+
+  // Two parallel DELETEs against the same row. One row lock wins; the other
+  // observes 0 affected rows. Both helpers return cleanly — no error, no
+  // deadlock, no constraint violation.
+  const [a, b] = await Promise.all([
+    app.inject({ method: 'DELETE', url: `/todos/${id}` }),
+    app.inject({ method: 'DELETE', url: `/todos/${id}` }),
+  ]);
+
+  // Sort outcomes — the loser/winner identity is non-deterministic.
+  const codes = [a.statusCode, b.statusCode].sort();
+  assert.deepEqual(codes, [204, 404]);
+
+  // Row is gone exactly once (not twice — there was only one to begin with).
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todos = (list.json() as { todos: Array<{ id: string }> }).todos;
+  assert.equal(
+    todos.find((t) => t.id === id),
+    undefined,
+  );
+});

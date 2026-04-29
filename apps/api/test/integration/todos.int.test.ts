@@ -396,3 +396,75 @@ test('PATCH /todos/:id — 400 on unknown field via `.strict()` (AC #5)', async 
   });
   assert.equal(res.statusCode, 400);
 });
+
+test('DELETE /todos/:id — 204 with empty body, row removed (AC #1)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'finish report' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const res = await app.inject({ method: 'DELETE', url: `/todos/${id}` });
+  assert.equal(res.statusCode, 204);
+  assert.equal(res.body, '');
+
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todos = (list.json() as { todos: Array<{ id: string }> }).todos;
+  assert.equal(
+    todos.find((t) => t.id === id),
+    undefined,
+  );
+});
+
+test('DELETE /todos/:id — 404 on a valid-but-missing UUID (AC #2)', async () => {
+  const ghostId = '00000000-0000-4000-8000-000000000000';
+  const res = await app.inject({ method: 'DELETE', url: `/todos/${ghostId}` });
+  assert.equal(res.statusCode, 404);
+  const body = res.json() as { statusCode: number; error: string; message: string };
+  assert.equal(body.statusCode, 404);
+  assert.equal(body.error, 'Not Found');
+  assert.equal(typeof body.message, 'string');
+});
+
+test('DELETE /todos/:id — 400 on a malformed UUID (AC #3)', async () => {
+  const res = await app.inject({ method: 'DELETE', url: '/todos/not-a-uuid' });
+  assert.equal(res.statusCode, 400);
+});
+
+test('DELETE /todos/:id — sequential double-delete: first 204, second 404 (AC #4)', async () => {
+  const created = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { text: 'one and done' },
+  });
+  const { id } = created.json() as { id: string };
+
+  const a = await app.inject({ method: 'DELETE', url: `/todos/${id}` });
+  const b = await app.inject({ method: 'DELETE', url: `/todos/${id}` });
+  assert.equal(a.statusCode, 204);
+  assert.equal(b.statusCode, 404);
+
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todos = (list.json() as { todos: Array<{ id: string }> }).todos;
+  assert.equal(
+    todos.find((t) => t.id === id),
+    undefined,
+  );
+});
+
+test('DELETE /todos/:id — does not delete other rows (AC #1)', async () => {
+  const a = await app.inject({ method: 'POST', url: '/todos', payload: { text: 'keep me' } });
+  const b = await app.inject({ method: 'POST', url: '/todos', payload: { text: 'delete me' } });
+  const idA = (a.json() as { id: string }).id;
+  const idB = (b.json() as { id: string }).id;
+
+  const res = await app.inject({ method: 'DELETE', url: `/todos/${idB}` });
+  assert.equal(res.statusCode, 204);
+
+  const list = await app.inject({ method: 'GET', url: '/todos' });
+  const todos = (list.json() as { todos: Array<{ id: string; text: string }> }).todos;
+  assert.equal(todos.length, 1);
+  assert.equal(todos[0]!.id, idA);
+  assert.equal(todos[0]!.text, 'keep me');
+});

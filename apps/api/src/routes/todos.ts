@@ -9,6 +9,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
   createTodo as defaultCreateTodo,
+  deleteTodoById as defaultDeleteTodoById,
   listTodos as defaultListTodos,
   updateTodoCompleted as defaultUpdateTodoCompleted,
 } from '../db/client.js';
@@ -19,12 +20,14 @@ export interface TodosRouteOptions {
   listTodos?: typeof defaultListTodos;
   createTodo?: typeof defaultCreateTodo;
   updateTodoCompleted?: typeof defaultUpdateTodoCompleted;
+  deleteTodoById?: typeof defaultDeleteTodoById;
 }
 
 const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => {
   const list = opts?.listTodos ?? defaultListTodos;
   const create = opts?.createTodo ?? defaultCreateTodo;
   const updateCompleted = opts?.updateTodoCompleted ?? defaultUpdateTodoCompleted;
+  const remove = opts?.deleteTodoById ?? defaultDeleteTodoById;
 
   app.withTypeProvider<ZodTypeProvider>().get(
     '/todos',
@@ -85,6 +88,28 @@ const todosRoutes: FastifyPluginAsync<TodosRouteOptions> = async (app, opts) => 
       const todo = await updateCompleted(req.params.id, req.body.completed);
       if (!todo) return reply.notFound();
       return todo;
+    },
+  );
+
+  app.withTypeProvider<ZodTypeProvider>().delete(
+    '/todos/:id',
+    {
+      schema: {
+        tags: ['todos'],
+        summary: 'Delete a todo by id',
+        description:
+          'Removes the todo with the given id. Returns 204 (no body) on success, ' +
+          '404 if no row with that id exists, 400 if the id is not a valid UUID. ' +
+          'No body is accepted; any payload is ignored by the route schema.',
+        params: TodoIdParamsSchema,
+        response: { 204: z.null() },
+      },
+    },
+    async (req, reply) => {
+      const deleted = await remove(req.params.id);
+      if (!deleted) return reply.notFound();
+      reply.code(204);
+      return null;
     },
   );
 };

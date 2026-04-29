@@ -50,3 +50,11 @@ export const updateTodoCompleted = async (
     .returning();
   return row ? toWire(row) : null;
 };
+
+export const deleteTodoById = async (id: string): Promise<boolean> => {
+  const rows = await db
+    .delete(todos)
+    .where(eq(todos.id, id))
+    .returning({ id: todos.id });
+  return rows.length === 1;
+};
