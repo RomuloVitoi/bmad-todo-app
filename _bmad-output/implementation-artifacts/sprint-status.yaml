@@ -36,6 +36,7 @@
 
 generated: 2026-04-19
 last_updated: 2026-04-29
+# 2026-04-29: 1-8 ready-for-dev → in-progress → review
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +51,7 @@ development_status:
   1-5-get-todos-endpoint-with-full-plugin-stack-and-observability: done
   1-6-health-and-docs-endpoints: done
   1-7-web-app-shell-layout-page-tailwind-globals-todoapp-component: done
-  1-8-typed-api-client-error-types-and-load-reducer: ready-for-dev
+  1-8-typed-api-client-error-types-and-load-reducer: review
   1-9-render-list-states-loading-empty-populated-read-only: backlog
   1-10-single-command-local-dev-orchestration: backlog
   1-11-build-and-deployment-artifacts: backlog
