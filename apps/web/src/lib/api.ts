@@ -1,4 +1,8 @@
-import { TodoListResponseSchema, type Todo } from '@todo-app/shared';
+import {
+  TodoListResponseSchema,
+  TodoSchema,
+  type Todo,
+} from '@todo-app/shared';
 import { ApiError } from './errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -47,4 +51,48 @@ export async function getTodos(signal?: AbortSignal): Promise<Todo[]> {
     });
   }
   return parsed.data.todos;
+}
+
+export async function createTodo(
+  text: string,
+  signal?: AbortSignal,
+): Promise<Todo> {
+  const requestId = newRequestId();
+  const response = await fetch(`${API_URL}/todos`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'x-request-id': requestId,
+    },
+    body: JSON.stringify({ text }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw await ApiError.fromResponse(response);
+  }
+
+  const responseRequestId = response.headers.get('x-request-id') ?? requestId;
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Malformed JSON in successful response',
+      requestId: responseRequestId,
+    });
+  }
+
+  const parsed = TodoSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Response did not match the expected todo schema',
+      requestId: responseRequestId,
+    });
+  }
+  return parsed.data;
 }

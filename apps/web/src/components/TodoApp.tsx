@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useReducer } from 'react';
-import { getTodos } from '@/lib/api';
+import { useCallback, useEffect, useReducer } from 'react';
+import { createTodo, getTodos } from '@/lib/api';
 import { ApiError } from '@/lib/errors';
 import { initialState, reducer } from '@/lib/reducer';
+import TodoInput from './TodoInput';
 import TodoList from './TodoList';
 
 export default function TodoApp() {
@@ -53,11 +54,26 @@ export default function TodoApp() {
     };
   }, []);
 
+  const handleAdd = useCallback((text: string): void => {
+    const tempId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    dispatch({ type: 'addOptimistic', payload: { tempId, text, createdAt } });
+    createTodo(text).then(
+      (todo) => {
+        dispatch({ type: 'addReconcile', payload: { tempId, todo } });
+      },
+      () => {
+        dispatch({ type: 'addFailed', payload: { tempId } });
+      },
+    );
+  }, []);
+
   return (
     <section aria-labelledby="todos-heading" className="flex flex-col gap-6">
       <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
         Shared Todos
       </h1>
+      {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
       <TodoList state={state} />
     </section>
   );

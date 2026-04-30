@@ -85,3 +85,123 @@ describe('getTodos()', () => {
     await expect(getTodos()).rejects.toThrow();
   });
 });
+
+describe('createTodo()', () => {
+  it('issues POST with x-request-id, content-type, and JSON body containing the supplied text verbatim', async () => {
+    const todo = {
+      id: '11111111-1111-4111-8111-111111111111',
+      text: 'buy milk',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    mockFetchOnce(
+      new Response(JSON.stringify(todo), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const { createTodo } = await import('./api');
+    const result = await createTodo('buy milk');
+    expect(result).toEqual(todo);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('http://localhost:4000/todos');
+    expect(init).toMatchObject({
+      method: 'POST',
+      headers: expect.objectContaining({
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-request-id': expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      }),
+      body: JSON.stringify({ text: 'buy milk' }),
+    });
+  });
+
+  it('preserves whitespace verbatim in the request body (server is the trim authority)', async () => {
+    const todo = {
+      id: '11111111-1111-4111-8111-111111111111',
+      text: 'buy milk',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    mockFetchOnce(new Response(JSON.stringify(todo), { status: 201 }));
+    const { createTodo } = await import('./api');
+    await createTodo('  buy milk  ');
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const init = fetchMock.mock.calls[0]![1]!;
+    expect(init.body).toBe(JSON.stringify({ text: '  buy milk  ' }));
+  });
+
+  it('throws ApiError with status, message, and requestId when the server returns a non-OK envelope', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: 'text must be at least 1 character',
+        }),
+        {
+          status: 400,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': 'srv-abc',
+          },
+        },
+      ),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 400,
+      message: 'text must be at least 1 character',
+      requestId: 'srv-abc',
+    });
+  });
+
+  it('throws ApiError with requestId === undefined when the server omits the x-request-id header', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'oops',
+        }),
+        { status: 500 },
+      ),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('x')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 500,
+      requestId: undefined,
+    });
+  });
+
+  it('throws ApiError when the 201 body fails TodoSchema parsing (server contract drift)', async () => {
+    mockFetchOnce(
+      new Response(JSON.stringify({ id: 'not-a-uuid', text: 'x' }), {
+        status: 201,
+      }),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('x')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Response did not match the expected todo schema',
+    });
+  });
+
+  it('throws ApiError when the 201 body is malformed JSON', async () => {
+    mockFetchOnce(
+      new Response('not json {', {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('x')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Malformed JSON in successful response',
+    });
+  });
+});
