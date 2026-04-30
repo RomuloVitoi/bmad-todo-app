@@ -35,12 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-04-30
+last_updated: 2026-04-30 # 2-7 review
 # 2026-04-30: 2-7 backlog → ready-for-dev (Create-Story: delete-button vertical slice closing Epic 2; deleteTodo + TodoItem extension + handleDelete; ~340 LOC across 8 files; 0 new deps; native <button>)
 # 2026-04-30: 2-6 backlog → ready-for-dev (Create-Story: Radix Checkbox toggle vertical slice; updateTodo + TodoItem rewrite + handleToggle; ~380 LOC across 8 files; +1 runtime dep @radix-ui/react-checkbox)
 # 2026-04-30: 2-6 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-30: 2-6 in-progress → review (Dev-Story: updateTodo + TodoItem Radix Checkbox + handleToggle; lint/typecheck clean; web tests 66 → 79; +1 runtime dep @radix-ui/react-checkbox@^1.3.3; no spec deviations)
 # 2026-04-30: 2-6 review → done (Code-Review: 0 decisions, 0 patches, 5 defers, ~28 dismissed; Acceptance Auditor 16/16 ACs PASS; all 5 deferrals are spec-ratified or pre-existing api-wrapper patterns folded into existing hardening backlog)
+# 2026-04-30: 2-7 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-04-30: 2-7 in-progress → review (Dev-Story: deleteTodo + TodoItem delete <button> + handleDelete vertical slice; lint/typecheck clean; web tests 79 → 94; 0 new deps; no spec deviations; commit 0969e15; closes Epic 2 UI)
 # 2026-04-29: 1-8 ready-for-dev → in-progress → review
 # 2026-04-29: 1-1 review → done (Run 2 review: 7 patches applied, 5 defers logged)
 # 2026-04-29: 1-2 review → done (Run 2 review: 0 patches, 5 defers — all ACs met, tightening = future scope)
@@ -104,7 +106,7 @@ development_status:
   2-4-reducer-extensions-for-optimistic-mutations: done
   2-5-create-todo-via-todoinput-full-vertical-slice: done
   2-6-toggle-completion-via-radix-checkbox: done
-  2-7-delete-todo-via-delete-button: ready-for-dev
+  2-7-delete-todo-via-delete-button: review
   epic-2-retrospective: optional
 
   epic-3: backlog
