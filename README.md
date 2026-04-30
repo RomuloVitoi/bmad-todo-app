@@ -15,6 +15,7 @@ Built as a Next.js + Fastify monorepo with a versioned Zod contract package.
 git clone <this-repo>
 cd todo-app
 cp .env.example .env
+cp apps/web/.env.example apps/web/.env.local
 npm install
 npm run dev
 ```
@@ -23,6 +24,10 @@ On first run this will:
 1. Bring up Postgres in Docker (`docker compose up -d --wait db`).
 2. Apply Drizzle migrations (`npm --workspace apps/api run db:migrate`).
 3. Start `next dev` on http://localhost:3000 and Fastify on http://localhost:4000.
+
+> **Why two env files?** The root `.env` is consumed by `docker-compose` and the API
+> workspace. Next.js only auto-loads env files from inside `apps/web/`, so the web app
+> needs its own `apps/web/.env.local` (gitignored) for `NEXT_PUBLIC_API_URL`.
 
 Open http://localhost:3000 to see the app.
 The API is served at http://localhost:4000; OpenAPI docs are at http://localhost:4000/docs (dev only).
@@ -54,8 +59,9 @@ scripts/dev.sh       # Single-command orchestrator (npm run dev)
 - **Port 5432 already in use:** another Postgres instance is running. Stop it (`brew services stop postgresql` on macOS) or change the host port mapping in [docker-compose.yml](docker-compose.yml).
 - **Port 3000 or 4000 in use:** another app is bound. Override `PORT` in `.env` (api) or kill the offender (`lsof -i :3000`).
 - **`.env not found`:** copy the template — `cp .env.example .env`.
+- **Web fails to start with `NEXT_PUBLIC_API_URL is required`:** Next.js only reads env files inside `apps/web/`, not the monorepo-root `.env`. Copy the template — `cp apps/web/.env.example apps/web/.env.local`.
 - **Migrations fail with "schema is behind":** run `npm --workspace apps/api run db:check` to see the drift, then `npm --workspace apps/api run db:migrate`.
-- **Web shows "Could not load todos":** check the API is up (`curl http://localhost:4000/health`) and that `NEXT_PUBLIC_API_URL` in `.env` matches.
+- **Web shows "Could not load todos":** check the API is up (`curl http://localhost:4000/health`) and that `NEXT_PUBLIC_API_URL` in `apps/web/.env.local` matches.
 
 ## Deployment
 

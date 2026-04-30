@@ -22,6 +22,10 @@ export default fp(
         if (!incoming) return cb(null, true);
         cb(null, incoming === allowed);
       },
+      // @fastify/cors v11 tightened the default to 'GET,HEAD,POST'. The todos
+      // routes use PATCH (toggle completion) and DELETE — both must be in the
+      // preflight Access-Control-Allow-Methods or the browser blocks the call.
+      methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
       credentials: false,
       exposedHeaders: ['x-request-id'],
     });
