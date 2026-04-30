@@ -1,6 +1,6 @@
 # Story 3.0: Playwright E2E test harness + canary stored-XSS test
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -492,6 +492,20 @@ MODIFIED:
 - `README.md` (1 row in Useful Scripts table + new "End-to-end tests" subsection)
 
 ### Review Findings
+
+Code review run on 2026-04-30 against commit `bc9d11b`. Three parallel layers: Blind Hunter (diff-only), Edge Case Hunter (diff + read access), Acceptance Auditor (diff + spec). Acceptance Auditor verdict: **9 PASS, 1 PARTIAL (AC #10 — gates not verifiable from diff alone, structural wiring confirmed), 1 N/V (AC #9 — runtime claim), 1 PASS-with-caveat (AC #8 — 16-line subsection vs ≤15 spec budget)**. No FAILs. Implementation byte-faithful to spec on hard requirements.
+
+- [x] \[Review]\[Patch] AC #8 — "End-to-end tests" subsection trimmed from 16 → 14 lines (`README.md:58-71`) by folding the "First-time setup (per machine):" intro into the explanatory paragraph as "First-time setup:" and removing the standalone lead-in. Spec budget ≤15 now satisfied with 1 line of slack.
+- [x] \[Review]\[Defer] afterEach DELETE rejection leaves `createdId` stale and leaks the seeded XSS row (`apps/web/e2e/xss-payload.spec.ts:14-22`) — deferred, harness hardening; spec only required tolerating 404. Wrap the cleanup in `try { ... } finally { createdId = null; }` when a second spec lands in this describe block.
+- [x] \[Review]\[Defer] `webServer` auto-spawn waits only on web `:3000`, not API `:4000` — first POST may race API readiness on cold spawn (`apps/web/playwright.config.ts:25-32`) — deferred, not exercised in this story (dev verification took the `reuseExistingServer` reuse path; spawn path will be exercised when CI integration lands).
+- [x] \[Review]\[Defer] `webServer.stdout: 'ignore'` makes 120s startup-timeout failures opaque (`apps/web/playwright.config.ts:31`) — deferred, UX tradeoff; revisit if the spawn path proves flaky in the CI-integration story.
+- [x] \[Review]\[Defer] `NEXT_PUBLIC_API_URL` contract drift — Next.js inlines this at build time, but the spec reads it at runner runtime; mismatched envs send writes to one origin and queries to another (`apps/web/e2e/xss-payload.spec.ts:7`) — deferred, env-config edge case dormant until contributors run with non-default API ports.
+- [x] \[Review]\[Defer] `webServer.timeout: 120_000` is tight for cold CI runs that pull docker images + run drizzle migrate (`apps/web/playwright.config.ts:30`) — deferred, CI integration is out of scope per Dev Notes "Why no CI integration".
+- [x] \[Review]\[Defer] `fullyParallel: true` + 3 browser projects seed identical payload concurrently into the shared dev DB; `getByText(payload)` may match multiple rows from parallel siblings (`apps/web/e2e/xss-payload.spec.ts:9`, `apps/web/playwright.config.ts:7`) — deferred, in non-strict mode the locator picks the first match; surfaces as flake only if Playwright strict-mode is later enabled or the spec adds a count assertion.
+- [x] \[Review]\[Defer] `created.id` unchecked cast — API contract drift produces `/todos/undefined` cleanup, masked by the 404 tolerance (`apps/web/e2e/xss-payload.spec.ts:35-37`) — deferred, robustness; integration tests in Story 2.1 already pin the `{ id }` shape so drift is caught upstream.
+- [x] \[Review]\[Defer] `deferred-work.md:115` (`test:*` glob footgun) should be annotated as resolved by this story's `test:*` → explicit allow-list change (`package.json:15`, `deferred-work.md:115`) — deferred, doc bookkeeping not code.
+
+**Dismissed (~22):** spec-ratified design choices (axe-core pre-installed unused per AC #2, glob → allow-list per AC #3, getByText non-strict per AC #5 "no clean-DB dependency", caret semver per project convention, `--with-deps` no-op on macOS/Windows per Task 1, tagging-as-documentation-only per Task 4, etc.); speculative future regressions (CSP missing, Shadow DOM, `null` vs `undefined`, iframe XSS, semver caret breakage, README dir-link rendering, sudo on Linux, CI=1 local mirror); cosmetic/stylistic (`describe` clutter, README ordering).
 
 ## Change Log
 

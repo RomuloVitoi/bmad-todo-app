@@ -60,9 +60,7 @@ scripts/dev.sh       # Single-command orchestrator (npm run dev)
 Real-browser E2E tests live in [apps/web/e2e/](apps/web/e2e/) and run via
 Playwright across Chromium, Firefox, and WebKit. They are intentionally
 separate from `npm run test` so contributors and CI jobs that do not want
-browser dependencies are not forced to install them.
-
-First-time setup (per machine):
+browser dependencies are not forced to install them. First-time setup:
 
 ```bash
 npm --workspace apps/web run test:e2e:install   # downloads browser binaries
