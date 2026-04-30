@@ -2,6 +2,16 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-6 (2026-04-30)
+
+### Story 2.6 — toggle completion via Radix Checkbox (commit `8361df8`)
+
+- **Concurrent rapid toggles can produce inconsistent rollback under specific failure interleavings** — [apps/web/src/components/TodoApp.tsx:71-99](../../apps/web/src/components/TodoApp.tsx#L71-L99). Reducer no-ops same-value transitions and Radix only emits change events on real transitions, so single-flow remains correct; back-to-back true→false→true with mixed PATCH success/failure could leave UI showing the wrong final state. Spec ratifies the no-debounce + no-pending-on-toggle design (Dev Notes "Why no client-side debounce on rapid checkbox toggles" + "Why no `aria-busy` on the checkbox"). Proper UX for in-flight toggles reserved for a future polish pass.
+- **`fetch()` rejection (network error / DNS / abort) propagates raw `TypeError`/`DOMException`, not `ApiError`** — [apps/web/src/lib/api.ts:106-115](../../apps/web/src/lib/api.ts#L106-L115) plus same pattern in [getTodos:19-26](../../apps/web/src/lib/api.ts#L19-L26) and [createTodo:61-70](../../apps/web/src/lib/api.ts#L61-L70). All three lack a try/catch around `await fetch(...)`. Not introduced by Story 2.6 (mirrors `createTodo` per spec line 197). Folds into the api-wrapper hardening pass already noted in Story 2.5's `?? requestId` empty-header / `cause:` chaining deferrals.
+- **Toggle rejection callback swallows the error without logging** — [apps/web/src/components/TodoApp.tsx:90-95](../../apps/web/src/components/TodoApp.tsx#L90-L95). Mirrors `handleAdd`'s rejection callback (no log) at [TodoApp.tsx:65-67](../../apps/web/src/components/TodoApp.tsx#L65-L67); diverges from the visibility-refetch path at [TodoApp.tsx:42-46](../../apps/web/src/components/TodoApp.tsx#L42-L46) which does `console.warn`. Story 3.2 (Toast for mutation failures) is the user-facing surface; Story 3.5 (global unhandled-rejection net) is the larger backstop. Until then, rollback is observable only via the UI revert.
+- **Focus-visible ring uses `current/40` opacity with `outline-none` and no `ring-offset`** — [apps/web/src/components/TodoItem.tsx:36](../../apps/web/src/components/TodoItem.tsx#L36). Intentional mirror of `<TodoInput>`'s focus-ring pattern (spec AC #3 ratifies). On a row with `border-current/10` neighbors, the 40% foreground ring may have weak contrast against same-color borders in non-default themes. Today the app uses default browser foreground (black) with high background contrast; theming/contrast hardening for non-default foregrounds is a future a11y polish concern.
+- **`role="checkbox"` `<button>` nested inside `<li>` may double-announce in some screen readers** — [apps/web/src/components/TodoItem.tsx:25-56](../../apps/web/src/components/TodoItem.tsx#L25-L56). Untested in either direction; Radix's documented `aria-labelledby` label-association pattern was used. Some VoiceOver/JAWS list-traversal modes can announce both the list item and the checkbox separately. Real AT testing belongs to a journey-level a11y pass (Epic 3 territory).
+
 ## Deferred from: code review of story 2-5 (2026-04-29)
 
 ### Story 2.5 — create-todo full vertical slice (commit `73b60ca`)

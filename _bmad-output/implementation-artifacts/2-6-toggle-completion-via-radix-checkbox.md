@@ -1,6 +1,6 @@
 # Story 2.6: Toggle completion via Radix Checkbox
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -1139,9 +1139,20 @@ claude-opus-4-7[1m] (Anthropic Claude Opus 4.7, 1M context)
 - Modified: `_bmad-output/implementation-artifacts/sprint-status.yaml` (status transitions + last_updated)
 - Modified: `_bmad-output/implementation-artifacts/2-6-toggle-completion-via-radix-checkbox.md` (Status, Dev Agent Record, File List, Change Log, all task checkboxes)
 
+### Review Findings
+
+Code-review run on 2026-04-30 against `62d6ae1..HEAD`. Three layers: Blind Hunter (adversarial, diff-only), Edge Case Hunter (path tracer, JSON), Acceptance Auditor (16/16 ACs PASS, no violations). 0 patches, 0 decisions, 5 defers, ~28 dismissed.
+
+- [x] \[Review]\[Defer] Concurrent rapid toggles can produce inconsistent rollback under specific failure interleavings (`apps/web/src/components/TodoApp.tsx:71-99`) — deferred, spec-ratified design (Dev Notes "Why no client-side debounce on rapid checkbox toggles" + "Why no `aria-busy` on the checkbox"). Reducer no-ops same-value transitions and Radix only emits change events on real transitions, so single-flow remains correct; back-to-back true→false→true with mixed PATCH success/failure could leave UI showing the wrong final state. Proper UX for in-flight toggles reserved for a future polish pass.
+- [x] \[Review]\[Defer] `fetch()` rejection (network error / DNS / abort) propagates raw `TypeError`/`DOMException`, not `ApiError` (`apps/web/src/lib/api.ts:106-115`) — deferred, pre-existing pattern shared with `getTodos` (`apps/web/src/lib/api.ts:19-26`) and `createTodo` (`apps/web/src/lib/api.ts:61-70`); mirrors `createTodo` per spec line 197. Folds into the api-wrapper hardening pass already noted in Story 2.5's `?? requestId` empty-header / `cause:` chaining deferrals.
+- [x] \[Review]\[Defer] Toggle rejection callback swallows the error without logging (`apps/web/src/components/TodoApp.tsx:90-95`) — deferred, mirrors `handleAdd`'s rejection callback (no log) at `apps/web/src/components/TodoApp.tsx:65-67`. Story 3.2 (Toast for mutation failures) is the user-facing surface; Story 3.5 (global unhandled-rejection net) is the larger backstop. Until then, rollback is observable only via the UI revert.
+- [x] \[Review]\[Defer] Focus-visible ring uses `current/40` opacity with `outline-none` and no `ring-offset` (`apps/web/src/components/TodoItem.tsx:36`) — deferred, intentional mirror of `<TodoInput>`'s focus-ring (spec AC #3 ratifies). On a row with `border-current/10` neighbors, the 40% foreground ring may have weak contrast against same-color borders in non-default themes. Today the app uses default foreground (black) with high background contrast; theming/contrast hardening is a future a11y polish concern.
+- [x] \[Review]\[Defer] `role="checkbox"` `<button>` nested inside `<li>` may double-announce in some screen readers (`apps/web/src/components/TodoItem.tsx:25-56`) — deferred, untested in either direction. Radix's documented `aria-labelledby` label-association pattern was used; some VoiceOver/JAWS list-traversal modes can announce both the list item and the checkbox separately. Real AT testing belongs to a journey-level a11y pass (Epic 3 territory).
+
 ## Change Log
 
 | Date       | Change                                                                                                          |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | 2026-04-30 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 6 (toggle vertical slice; consumes Story 2.4's `toggleOptimistic`/`toggleFailed` plus `addReconcile`; mirrors Story 2.5's three-layer orchestration; precedes 2.7 delete; retires the Story 1.9 `aria-checked` on `<li>` placeholder). |
 | 2026-04-30 | Dev-Story complete via `/bmad-dev-story`. Status: ready-for-dev → in-progress → review. Implemented `updateTodo` + Radix Checkbox in `<TodoItem>` + `handleToggle` in `<TodoApp>`. Added `@radix-ui/react-checkbox@^1.3.3` runtime dep. Lint/typecheck clean; web tests 66 → 79; api tests 4 unchanged. No spec deviations. Source commit: `8361df8`. |
+| 2026-04-30 | Code-Review complete via `/bmad-code-review` (range `62d6ae1..HEAD`). Status: review → done. Three layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (16/16 ACs PASS; no guardrail/watch-out/out-of-scope violations). Triage: 0 decision-needed, 0 patches, 5 deferred, ~28 dismissed as noise. All 5 deferrals are spec-ratified or pre-existing patterns folded into existing hardening backlog (concurrent-toggle race, fetch-rejection envelope, rejection-error logging, focus-ring contrast, checkbox-in-listitem AT announcement). |
