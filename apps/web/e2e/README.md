@@ -38,7 +38,9 @@ and `apps/web/playwright-report/` (HTML report). Both are gitignored.
 ## Where the tests live
 
 `apps/web/e2e/*.spec.ts` — one spec per scenario. Co-locate journey files when
-Story 3.6 lands (e.g., `journey-3-resilience.spec.ts`).
+Story 3.6 lands (e.g., `journey-3-resilience.spec.ts`). Currently:
+`xss-payload.spec.ts` (P0-013), `journey-1-happy-path.spec.ts` (P0-022),
+`journey-2-returning-session.spec.ts` (P0-023 + P2-011).
 
 ## Tagging convention
 
@@ -57,8 +59,9 @@ double-execute them.
 
 ## What is NOT covered yet
 
-Only P0-013 (stored-XSS canary) is implemented. The remaining nine E2E
-scenarios from `_bmad-output/test-artifacts/test-design-architecture.md:89`
+P0-013 (stored XSS), P0-022 (Journey 1 happy path), P0-023 (Journey 2 returning
+session — also satisfies P2-011's DELETE round-trip) are implemented. The
+remaining E2E scenarios from `_bmad-output/test-artifacts/test-design-architecture.md:89`
 await dedicated stories:
 
 - P0-024 — Journey 3 resilience (Story 3.6 territory).
