@@ -53,6 +53,24 @@ scripts/dev.sh       # Single-command orchestrator (npm run dev)
 | `npm run lint` | ESLint across all workspaces |
 | `npm run typecheck` | `tsc --noEmit` across all workspaces |
 | `npm run test` | Run unit tests in all workspaces (no DB required) |
+| `npm run test:e2e` | Playwright E2E across Chromium / Firefox / WebKit (run `npm --workspace apps/web run test:e2e:install` once first) |
+
+## End-to-end tests
+
+Real-browser E2E tests live in [apps/web/e2e/](apps/web/e2e/) and run via
+Playwright across Chromium, Firefox, and WebKit. They are intentionally
+separate from `npm run test` so contributors and CI jobs that do not want
+browser dependencies are not forced to install them.
+
+First-time setup (per machine):
+
+```bash
+npm --workspace apps/web run test:e2e:install   # downloads browser binaries
+```
+
+Then `npm run test:e2e` from the repo root. Playwright auto-starts the full
+dev stack via [scripts/dev.sh](scripts/dev.sh) when it isn't already running.
+See [apps/web/e2e/README.md](apps/web/e2e/README.md) for details.
 
 ## Troubleshooting
 

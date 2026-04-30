@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-04-30 # 3-0 ready-for-dev
+last_updated: 2026-04-30 # 3-0 review
 # 2026-04-30: epic-3 backlog → in-progress (Create-Story: first story 3-0 created; closes ASR-1 from test-design phase)
 # 2026-04-30: 3-0 (new) → ready-for-dev (Create-Story: Playwright + axe-core E2E harness scaffold + P0-013 stored-XSS canary; apps/web/e2e/, playwright.config.ts, 3 browser projects, webServer auto-spawn against scripts/dev.sh; ~250 LOC across 8-10 files; +2 devDeps @playwright/test + @axe-core/playwright; closes deferred-work.md:115 test:* glob fix)
 # 2026-04-30: 2-7 backlog → ready-for-dev (Create-Story: delete-button vertical slice closing Epic 2; deleteTodo + TodoItem extension + handleDelete; ~340 LOC across 8 files; 0 new deps; native <button>)
@@ -46,6 +46,8 @@ last_updated: 2026-04-30 # 3-0 ready-for-dev
 # 2026-04-30: 2-7 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-30: 2-7 in-progress → review (Dev-Story: deleteTodo + TodoItem delete <button> + handleDelete vertical slice; lint/typecheck clean; web tests 79 → 94; 0 new deps; no spec deviations; commit 0969e15; closes Epic 2 UI)
 # 2026-04-30: 2-7 review → done (Code-Review: 0 decisions, 0 patches, 2 defers, ~28 dismissed; Acceptance Auditor 16/16 ACs PASS or N/V; all deferrals fold into Epic 3 hardening — rapid double-click race + reducer dedup; Epic 2 UI closes)
+# 2026-04-30: 3-0 ready-for-dev → in-progress (Dev-Story: starting Playwright + axe-core harness scaffold)
+# 2026-04-30: 3-0 in-progress → review (Dev-Story: Playwright config + xss-payload.spec.ts canary + 3 scripts + 4 .gitignore entries + e2e/README.md + root README scripts row + test:* glob → explicit allow-list; @playwright/test@1.59.1 + @axe-core/playwright@4.11.3 pinned; canary passes 3/3 browsers in 17.5s; lint/typecheck/test green; web tests still 94; closes ASR-1 + deferred-work.md:115; no spec deviations)
 # 2026-04-29: 1-8 ready-for-dev → in-progress → review
 # 2026-04-29: 1-1 review → done (Run 2 review: 7 patches applied, 5 defers logged)
 # 2026-04-29: 1-2 review → done (Run 2 review: 0 patches, 5 defers — all ACs met, tightening = future scope)
@@ -113,7 +115,7 @@ development_status:
   epic-2-retrospective: optional
 
   epic-3: in-progress
-  3-0-playwright-e2e-harness: ready-for-dev
+  3-0-playwright-e2e-harness: review
   3-1-toast-infrastructure-radix-toast-reducer-slice: backlog
   3-2-mutation-failure-toasts-with-user-facing-error-messages: backlog
   3-3-preserve-todoinput-text-on-add-failure-fr19: backlog

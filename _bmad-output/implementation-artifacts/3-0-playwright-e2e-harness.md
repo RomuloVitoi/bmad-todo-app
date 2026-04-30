@@ -1,6 +1,6 @@
 # Story 3.0: Playwright E2E test harness + canary stored-XSS test
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -110,24 +110,24 @@ so that ASR-1 from [test-design-architecture.md:67](../test-artifacts/test-desig
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Add Playwright + axe-core devDeps and scripts to `apps/web/package.json` (AC: #2)**
-  - [ ] Edit [apps/web/package.json](../../apps/web/package.json). Run `npm install --save-dev --workspace apps/web @playwright/test @axe-core/playwright`. The lockfile updates accordingly; verify `apps/web/package.json` `devDependencies` now contains both with caret ranges (`^1.x` / `^4.x`). Record the EXACT pinned versions in Completion Notes — they should be the latest stable as of 2026-04-30.
-  - [ ] Add the three scripts in AC #2 — copy verbatim. Order them after the existing `test:watch` script.
-  - [ ] **Why `@axe-core/playwright` is installed but unused in this story** — Future stories (P1-013 axe-core scan of empty/loading/populated states per [test-design-qa.md:258](../test-artifacts/test-design-qa.md#L258)) need it. Bundling the install with the harness scaffold avoids a "go re-run npm install on every machine" follow-up the moment story 3-7 lands. The package is dev-only and adds no runtime weight.
-  - [ ] **Why `playwright install --with-deps` (vs. plain `playwright install`)** — `--with-deps` installs the system libraries Playwright needs on Linux (for CI). On macOS / Windows the `--with-deps` flag is harmless (no-op).
-  - [ ] **Why three browsers (not just chromium)** — Test-design-qa.md:325 explicitly pins all three: "All E2E + axe-core across Chromium / Firefox / WebKit." Webkit catches Safari-only regressions (e.g., `:has()` selector early support, focus-ring quirks) that would slip through chromium-only runs.
-  - [ ] **Watch-out:** Do NOT add `playwright` (without `@`) as a dep. The legacy `playwright` package is the test-runner-less library; `@playwright/test` is what we want. Many tutorials confuse them.
-  - [ ] **Watch-out:** Do NOT add Playwright deps to the root `package.json`. Keep them in the web workspace where the tests live; the root `test:e2e` script is a pass-through.
+- [x] **Task 1: Add Playwright + axe-core devDeps and scripts to `apps/web/package.json` (AC: #2)**
+  - [x] Edit [apps/web/package.json](../../apps/web/package.json). Run `npm install --save-dev --workspace apps/web @playwright/test @axe-core/playwright`. The lockfile updates accordingly; verify `apps/web/package.json` `devDependencies` now contains both with caret ranges (`^1.x` / `^4.x`). Record the EXACT pinned versions in Completion Notes — they should be the latest stable as of 2026-04-30.
+  - [x] Add the three scripts in AC #2 — copy verbatim. Order them after the existing `test:watch` script.
+  - [x] **Why `@axe-core/playwright` is installed but unused in this story** — Future stories (P1-013 axe-core scan of empty/loading/populated states per [test-design-qa.md:258](../test-artifacts/test-design-qa.md#L258)) need it. Bundling the install with the harness scaffold avoids a "go re-run npm install on every machine" follow-up the moment story 3-7 lands. The package is dev-only and adds no runtime weight.
+  - [x] **Why `playwright install --with-deps` (vs. plain `playwright install`)** — `--with-deps` installs the system libraries Playwright needs on Linux (for CI). On macOS / Windows the `--with-deps` flag is harmless (no-op).
+  - [x] **Why three browsers (not just chromium)** — Test-design-qa.md:325 explicitly pins all three: "All E2E + axe-core across Chromium / Firefox / WebKit." Webkit catches Safari-only regressions (e.g., `:has()` selector early support, focus-ring quirks) that would slip through chromium-only runs.
+  - [x] **Watch-out:** Do NOT add `playwright` (without `@`) as a dep. The legacy `playwright` package is the test-runner-less library; `@playwright/test` is what we want. Many tutorials confuse them.
+  - [x] **Watch-out:** Do NOT add Playwright deps to the root `package.json`. Keep them in the web workspace where the tests live; the root `test:e2e` script is a pass-through.
 
-- [ ] **Task 2: Add the root-level `test:e2e` alias (AC: #3)**
-  - [ ] Edit [package.json](../../package.json). Add `"test:e2e": "npm --workspace apps/web run test:e2e"` to `scripts`. Place it directly after the existing `test:web` line.
-  - [ ] **Watch-out:** Do NOT modify the existing `test` script's glob (`npm-run-all --print-label test:*`). Adding `test:e2e` to the workspace WOULD cause the glob to absorb it, breaking the "no DB required for `npm run test`" contract from [Story 1.10](../planning-artifacts/epics.md#L632) and the explicit warning in [deferred-work.md:115](./deferred-work.md#L115). The `test:*` glob is a known footgun documented there. Either:
+- [x] **Task 2: Add the root-level `test:e2e` alias (AC: #3)**
+  - [x] Edit [package.json](../../package.json). Add `"test:e2e": "npm --workspace apps/web run test:e2e"` to `scripts`. Place it directly after the existing `test:web` line.
+  - [x] **Watch-out:** Do NOT modify the existing `test` script's glob (`npm-run-all --print-label test:*`). Adding `test:e2e` to the workspace WOULD cause the glob to absorb it, breaking the "no DB required for `npm run test`" contract from [Story 1.10](../planning-artifacts/epics.md#L632) and the explicit warning in [deferred-work.md:115](./deferred-work.md#L115). The `test:*` glob is a known footgun documented there. Either:
     - (a) **Preferred:** rename the new script so it does NOT match `test:*` (NOT chosen here — `test:e2e` is the conventional name), OR
     - (b) **Done in this task:** replace the glob with an explicit list. Edit the root `test` script from `"test": "npm-run-all --print-label test:*"` to `"test": "npm-run-all --print-label test:shared test:api test:web"` (explicit allow-list; new tiers must be opted in deliberately). This is the fix [deferred-work.md:115](./deferred-work.md#L115) recommended; landing it here closes that defer.
-  - [ ] Verify by running `npm run test` from the repo root after the change — the run must NOT include Playwright; the existing 48 unit tests + integration tests still execute.
+  - [x] Verify by running `npm run test` from the repo root after the change — the run must NOT include Playwright; the existing 48 unit tests + integration tests still execute.
 
-- [ ] **Task 3: Create `apps/web/playwright.config.ts` (AC: #1)**
-  - [ ] Create [apps/web/playwright.config.ts](../../apps/web/playwright.config.ts) with the following content. Match exactly — every option in AC #1 is justified there.
+- [x] **Task 3: Create `apps/web/playwright.config.ts` (AC: #1)**
+  - [x] Create [apps/web/playwright.config.ts](../../apps/web/playwright.config.ts) with the following content. Match exactly — every option in AC #1 is justified there.
 
     ```ts
     import { defineConfig, devices } from '@playwright/test';
@@ -166,17 +166,17 @@ so that ASR-1 from [test-design-architecture.md:67](../test-artifacts/test-desig
     });
     ```
 
-  - [ ] **Why `cwd: '../..'`** — Playwright resolves `cwd` relative to the config file. The config sits at `apps/web/playwright.config.ts` and the dev orchestrator at [scripts/dev.sh](../../scripts/dev.sh) lives at the repo root, two levels up. Without this, `npm run dev` would invoke the web workspace's per-app `dev` script (`next dev` only — no Postgres, no API), and the XSS canary's API call would fail.
-  - [ ] **Why `reuseExistingServer: !process.env.CI`** — On a developer laptop, you usually have `npm run dev` already running. Playwright's default would refuse to start a second dev server and fail. With this flag set true (in non-CI), Playwright detects port :3000 is open, skips the spawn, and proceeds. CI does NOT have a dev server, so Playwright spawns its own.
-  - [ ] **Why `timeout: 120_000` (2 min)** — `scripts/dev.sh` does docker compose pull (first run), DB healthcheck wait, drizzle migrate, then parallel-launches Next.js + Fastify. On a cold cache that's easily 60-90 s. The default 60 s is too tight.
-  - [ ] **Why `stdout: 'ignore'` / `stderr: 'pipe'`** — The dev stack is chatty (Next.js, Pino, Drizzle, Postgres). Piping stdout floods Playwright's terminal; piping stderr only surfaces real errors.
-  - [ ] **Why `forbidOnly: !!process.env.CI`** — If a developer commits a `test.only(...)` they'll see a clear failure in CI rather than green-but-skipped. Local runs allow `.only` for focused debugging.
-  - [ ] **Watch-out:** Do NOT add `outputDir`, `globalSetup`, or `globalTeardown` in this story. They are tools for journey/setup-heavy stories; YAGNI here.
-  - [ ] **Watch-out:** Do NOT add `testMatch` or `testIgnore`. Default `*.spec.ts` matching is correct.
-  - [ ] **Watch-out:** Do NOT add a `grep` filter to the config. That belongs on the CLI (`playwright test --grep @P0`).
+  - [x] **Why `cwd: '../..'`** — Playwright resolves `cwd` relative to the config file. The config sits at `apps/web/playwright.config.ts` and the dev orchestrator at [scripts/dev.sh](../../scripts/dev.sh) lives at the repo root, two levels up. Without this, `npm run dev` would invoke the web workspace's per-app `dev` script (`next dev` only — no Postgres, no API), and the XSS canary's API call would fail.
+  - [x] **Why `reuseExistingServer: !process.env.CI`** — On a developer laptop, you usually have `npm run dev` already running. Playwright's default would refuse to start a second dev server and fail. With this flag set true (in non-CI), Playwright detects port :3000 is open, skips the spawn, and proceeds. CI does NOT have a dev server, so Playwright spawns its own.
+  - [x] **Why `timeout: 120_000` (2 min)** — `scripts/dev.sh` does docker compose pull (first run), DB healthcheck wait, drizzle migrate, then parallel-launches Next.js + Fastify. On a cold cache that's easily 60-90 s. The default 60 s is too tight.
+  - [x] **Why `stdout: 'ignore'` / `stderr: 'pipe'`** — The dev stack is chatty (Next.js, Pino, Drizzle, Postgres). Piping stdout floods Playwright's terminal; piping stderr only surfaces real errors.
+  - [x] **Why `forbidOnly: !!process.env.CI`** — If a developer commits a `test.only(...)` they'll see a clear failure in CI rather than green-but-skipped. Local runs allow `.only` for focused debugging.
+  - [x] **Watch-out:** Do NOT add `outputDir`, `globalSetup`, or `globalTeardown` in this story. They are tools for journey/setup-heavy stories; YAGNI here.
+  - [x] **Watch-out:** Do NOT add `testMatch` or `testIgnore`. Default `*.spec.ts` matching is correct.
+  - [x] **Watch-out:** Do NOT add a `grep` filter to the config. That belongs on the CLI (`playwright test --grep @P0`).
 
-- [ ] **Task 4: Create the canary XSS spec (AC: #4, #5)**
-  - [ ] Create [apps/web/e2e/xss-payload.spec.ts](../../apps/web/e2e/xss-payload.spec.ts) with the following content. The test name includes `@P0 @Security` tags; the body mirrors the test-design-qa scaffold but adds the cleanup hook and the structural-assertion defense-in-depth check.
+- [x] **Task 4: Create the canary XSS spec (AC: #4, #5)**
+  - [x] Create [apps/web/e2e/xss-payload.spec.ts](../../apps/web/e2e/xss-payload.spec.ts) with the following content. The test name includes `@P0 @Security` tags; the body mirrors the test-design-qa scaffold but adds the cleanup hook and the structural-assertion defense-in-depth check.
 
     ```ts
     import { test, expect } from '@playwright/test';
@@ -242,17 +242,17 @@ so that ASR-1 from [test-design-architecture.md:67](../test-artifacts/test-desig
     });
     ```
 
-  - [ ] **Why seed via API, not via UI typing** — Two reasons. (1) The XSS attack surface is the RENDER path, not the input path. A hostile client could `curl -X POST` the payload directly; the test must prove the render is safe regardless of how the row got there. (2) UI typing would be slower and less deterministic; the canary's purpose is to run fast and flag rendering regressions.
-  - [ ] **Why three escalating assertions** — `getByText(payload)` proves the text content matches. `window.__xss__ === undefined` proves the script did NOT execute. `script:has-text(...).count() === 0` proves no `<script>` element with the payload was constructed at all (defense-in-depth — covers a hypothetical regression where JSX is bypassed via `dangerouslySetInnerHTML`, which is currently banned by ESLint per [architecture.md:216](../planning-artifacts/architecture.md#L216) but the ESLint rule could be disabled, this test would still fire).
-  - [ ] **Why `randomUUID()` from `node:crypto`** — Playwright tests run in Node, not in a browser, until `page.goto` is called. `crypto.randomUUID()` is available globally only inside the browser context (via `page.evaluate`). For headers passed to `request.post`, use the Node-side `randomUUID` from `node:crypto`.
-  - [ ] **Why the `afterEach` tolerates 404** — If the test failed BEFORE `createdId` was set (e.g., the network call rejected), `createdId` stays `null` and the cleanup branch is skipped. If the test failed AFTER set but the DELETE itself races with another worker, 404 is acceptable. Pinning to 204 strictly would create false-fail noise on test bugs.
-  - [ ] **Why no list-length assertion** — The dev DB may already contain rows from prior runs / manual testing. `getByText(payload)` matches THIS specific test's row regardless. List-length assertions would make the test order-dependent and hostile to developer dev-loop usage.
-  - [ ] **Watch-out:** Do NOT use `page.locator(`text=${payload}`)` — string-interpolating user-controlled content into a Playwright text selector is a separate kind of trap (selectors aren't HTML, but escaping inconsistencies surprise people). `page.getByText(payload)` accepts a string argument and handles it as a literal substring match.
-  - [ ] **Watch-out:** Do NOT add `await page.waitForLoadState('networkidle')`. The home page does a single GET /todos on mount; once the list is visible, the test can proceed. `networkidle` is brittle when the page has long-poll-like behavior (it doesn't, today, but defending against future regressions makes the test fragile).
-  - [ ] **Watch-out:** Do NOT add a "happy path no-XSS" sibling test in this story. P1-001 / P1-022 / etc. cover non-payload journeys; this story is the harness + R-002 canary only. Scope creep here multiplies into a Story 3.6-sized PR.
+  - [x] **Why seed via API, not via UI typing** — Two reasons. (1) The XSS attack surface is the RENDER path, not the input path. A hostile client could `curl -X POST` the payload directly; the test must prove the render is safe regardless of how the row got there. (2) UI typing would be slower and less deterministic; the canary's purpose is to run fast and flag rendering regressions.
+  - [x] **Why three escalating assertions** — `getByText(payload)` proves the text content matches. `window.__xss__ === undefined` proves the script did NOT execute. `script:has-text(...).count() === 0` proves no `<script>` element with the payload was constructed at all (defense-in-depth — covers a hypothetical regression where JSX is bypassed via `dangerouslySetInnerHTML`, which is currently banned by ESLint per [architecture.md:216](../planning-artifacts/architecture.md#L216) but the ESLint rule could be disabled, this test would still fire).
+  - [x] **Why `randomUUID()` from `node:crypto`** — Playwright tests run in Node, not in a browser, until `page.goto` is called. `crypto.randomUUID()` is available globally only inside the browser context (via `page.evaluate`). For headers passed to `request.post`, use the Node-side `randomUUID` from `node:crypto`.
+  - [x] **Why the `afterEach` tolerates 404** — If the test failed BEFORE `createdId` was set (e.g., the network call rejected), `createdId` stays `null` and the cleanup branch is skipped. If the test failed AFTER set but the DELETE itself races with another worker, 404 is acceptable. Pinning to 204 strictly would create false-fail noise on test bugs.
+  - [x] **Why no list-length assertion** — The dev DB may already contain rows from prior runs / manual testing. `getByText(payload)` matches THIS specific test's row regardless. List-length assertions would make the test order-dependent and hostile to developer dev-loop usage.
+  - [x] **Watch-out:** Do NOT use `page.locator(`text=${payload}`)` — string-interpolating user-controlled content into a Playwright text selector is a separate kind of trap (selectors aren't HTML, but escaping inconsistencies surprise people). `page.getByText(payload)` accepts a string argument and handles it as a literal substring match.
+  - [x] **Watch-out:** Do NOT add `await page.waitForLoadState('networkidle')`. The home page does a single GET /todos on mount; once the list is visible, the test can proceed. `networkidle` is brittle when the page has long-poll-like behavior (it doesn't, today, but defending against future regressions makes the test fragile).
+  - [x] **Watch-out:** Do NOT add a "happy path no-XSS" sibling test in this story. P1-001 / P1-022 / etc. cover non-payload journeys; this story is the harness + R-002 canary only. Scope creep here multiplies into a Story 3.6-sized PR.
 
-- [ ] **Task 5: Add `.gitignore` entries (AC: #6)**
-  - [ ] Edit [apps/web/.gitignore](../../apps/web/.gitignore). Append a `# playwright` block matching the format of the existing `# next.js` and `# testing` blocks at [apps/web/.gitignore:11-19](../../apps/web/.gitignore#L11-L19):
+- [x] **Task 5: Add `.gitignore` entries (AC: #6)**
+  - [x] Edit [apps/web/.gitignore](../../apps/web/.gitignore). Append a `# playwright` block matching the format of the existing `# next.js` and `# testing` blocks at [apps/web/.gitignore:11-19](../../apps/web/.gitignore#L11-L19):
 
     ```
     # playwright
@@ -262,42 +262,42 @@ so that ASR-1 from [test-design-architecture.md:67](../test-artifacts/test-desig
     /blob-report/
     ```
 
-  - [ ] **Why each entry**:
+  - [x] **Why each entry**:
     - `/test-results/` — Playwright's per-test artifact dir (trace.zip, video.webm, screenshots). Created on every run; can grow to hundreds of MB.
     - `/playwright-report/` — HTML report from `reporter: ['html']`. Not source; generated on run.
     - `/playwright/.cache/` — Playwright internal cache (browser binary checksums, etc.).
     - `/blob-report/` — Used when CI shards Playwright runs across multiple machines. Empty today; pre-emptive ignore.
-  - [ ] **Watch-out:** Do NOT add `/.playwright/` (no leading dot) or other variants — Playwright's actual directory names are documented; matching the wrong name produces silently uncovered files.
-  - [ ] **Watch-out:** Do NOT add the entries to the root [.gitignore](../../.gitignore). The Playwright run happens from inside `apps/web/`; output dirs are created there. Adding to root `.gitignore` would not catch the apps/web/test-results/ path under all git modes.
+  - [x] **Watch-out:** Do NOT add `/.playwright/` (no leading dot) or other variants — Playwright's actual directory names are documented; matching the wrong name produces silently uncovered files.
+  - [x] **Watch-out:** Do NOT add the entries to the root [.gitignore](../../.gitignore). The Playwright run happens from inside `apps/web/`; output dirs are created there. Adding to root `.gitignore` would not catch the apps/web/test-results/ path under all git modes.
 
-- [ ] **Task 6: Verify ESLint and TypeScript pick up `apps/web/e2e/` (AC: #10, #11)**
-  - [ ] Open [apps/web/tsconfig.json](../../apps/web/tsconfig.json). Verify the `include` array covers `e2e/**/*.ts`. If it does not (most likely it covers `**/*.ts` already, which subsumes `e2e/`), no edit needed; record "verified — already covered" in Completion Notes. If a narrower `include` exists (e.g., `["src/**/*.ts"]`), append `"e2e/**/*.ts"` to it.
-  - [ ] Run `npm run typecheck:web` from the repo root. The new spec must compile cleanly (zero errors).
-  - [ ] Run `npm run lint` from the repo root. The new spec must lint cleanly (zero warnings, zero errors). If the existing `import` cross-app ban at [eslint.config.mjs:38-50](../../eslint.config.mjs#L38-L50) blocks the spec's imports (none in this story's spec — but check), relax the ban for `apps/web/e2e/**`. The relaxation is one entry in the rule's `pattern` array.
-  - [ ] **Why type-check the specs** — Playwright's API is heavily typed; a typo in a fixture name (`requrest` vs `request`) would silently fail the test rather than fail typecheck. Including specs in TS coverage catches drift early.
-  - [ ] **Why lint the specs** — Same reason. Specs are first-class TS code; treating them differently invites bit-rot.
+- [x] **Task 6: Verify ESLint and TypeScript pick up `apps/web/e2e/` (AC: #10, #11)**
+  - [x] Open [apps/web/tsconfig.json](../../apps/web/tsconfig.json). Verify the `include` array covers `e2e/**/*.ts`. If it does not (most likely it covers `**/*.ts` already, which subsumes `e2e/`), no edit needed; record "verified — already covered" in Completion Notes. If a narrower `include` exists (e.g., `["src/**/*.ts"]`), append `"e2e/**/*.ts"` to it.
+  - [x] Run `npm run typecheck:web` from the repo root. The new spec must compile cleanly (zero errors).
+  - [x] Run `npm run lint` from the repo root. The new spec must lint cleanly (zero warnings, zero errors). If the existing `import` cross-app ban at [eslint.config.mjs:38-50](../../eslint.config.mjs#L38-L50) blocks the spec's imports (none in this story's spec — but check), relax the ban for `apps/web/e2e/**`. The relaxation is one entry in the rule's `pattern` array.
+  - [x] **Why type-check the specs** — Playwright's API is heavily typed; a typo in a fixture name (`requrest` vs `request`) would silently fail the test rather than fail typecheck. Including specs in TS coverage catches drift early.
+  - [x] **Why lint the specs** — Same reason. Specs are first-class TS code; treating them differently invites bit-rot.
 
-- [ ] **Task 7: Create `apps/web/e2e/README.md` (AC: #7)**
-  - [ ] Create [apps/web/e2e/README.md](../../apps/web/e2e/README.md). Use the structure and content from AC #7. The README is for HUMAN onboarding; keep it ≤ 80 lines. Do NOT duplicate config explanations that live in `playwright.config.ts` comments.
-  - [ ] **Watch-out:** Do NOT include CI configuration here. CI for E2E is a separate, future story (one of the deferred items in story 3.7+ work). The README explicitly says "the harness is configured for local dev and ready for CI integration in a future story."
+- [x] **Task 7: Create `apps/web/e2e/README.md` (AC: #7)**
+  - [x] Create [apps/web/e2e/README.md](../../apps/web/e2e/README.md). Use the structure and content from AC #7. The README is for HUMAN onboarding; keep it ≤ 80 lines. Do NOT duplicate config explanations that live in `playwright.config.ts` comments.
+  - [x] **Watch-out:** Do NOT include CI configuration here. CI for E2E is a separate, future story (one of the deferred items in story 3.7+ work). The README explicitly says "the harness is configured for local dev and ready for CI integration in a future story."
 
-- [ ] **Task 8: Update root README.md (AC: #8)**
-  - [ ] Edit [README.md](../../README.md). Add the "End-to-end tests" subsection AFTER the **Useful Scripts** table (line 50) and BEFORE **Troubleshooting** (line 52). Keep it ≤ 15 lines. Reference [apps/web/e2e/README.md](../../apps/web/e2e/README.md) for details.
-  - [ ] Append the `npm run test:e2e` row to the **Useful Scripts** table.
-  - [ ] **Watch-out:** Do NOT change the existing Quick Start (lines 12-21). E2E setup is opt-in; it must NOT be in the critical path that every contributor runs.
-  - [ ] **Watch-out:** Do NOT mention the CI E2E setup. There is no CI E2E setup yet; doing so would be misleading.
+- [x] **Task 8: Update root README.md (AC: #8)**
+  - [x] Edit [README.md](../../README.md). Add the "End-to-end tests" subsection AFTER the **Useful Scripts** table (line 50) and BEFORE **Troubleshooting** (line 52). Keep it ≤ 15 lines. Reference [apps/web/e2e/README.md](../../apps/web/e2e/README.md) for details.
+  - [x] Append the `npm run test:e2e` row to the **Useful Scripts** table.
+  - [x] **Watch-out:** Do NOT change the existing Quick Start (lines 12-21). E2E setup is opt-in; it must NOT be in the critical path that every contributor runs.
+  - [x] **Watch-out:** Do NOT mention the CI E2E setup. There is no CI E2E setup yet; doing so would be misleading.
 
-- [ ] **Task 9: Run the full sanity gate plus the new E2E spec (AC: #9, #10)**
-  - [ ] From the repo root: `npm install` (picks up the new web devDeps), then `npm --workspace apps/web run test:e2e:install` (downloads browser binaries — runs once per machine, takes 1-2 minutes), then `npm run dev` in one terminal AND `npm run test:e2e` in another (or single-terminal `npm run test:e2e` to use auto-spawn — which takes longer but proves the spawn path works).
-  - [ ] Verify all 3 test results pass (one per browser project).
-  - [ ] Verify wall-clock time is under 30 s for the single-spec run (per browser; aggregated ~15-30 s for all three).
-  - [ ] From the repo root: `npm run lint && npm run typecheck && npm run test`. All must pass with zero warnings / zero errors / zero changes to existing test counts (the harness adds Playwright tests but they live OUTSIDE the Vitest / node:test paths, so unit/integration counts stay exactly where they were after Story 2.7).
-  - [ ] Verify `npm run test` (without `:e2e`) does NOT trigger any `playwright` invocation. If it does, AC #3 / Task 2 was incomplete — fix the explicit allow-list and re-run.
+- [x] **Task 9: Run the full sanity gate plus the new E2E spec (AC: #9, #10)**
+  - [x] From the repo root: `npm install` (picks up the new web devDeps), then `npm --workspace apps/web run test:e2e:install` (downloads browser binaries — runs once per machine, takes 1-2 minutes), then `npm run dev` in one terminal AND `npm run test:e2e` in another (or single-terminal `npm run test:e2e` to use auto-spawn — which takes longer but proves the spawn path works).
+  - [x] Verify all 3 test results pass (one per browser project).
+  - [x] Verify wall-clock time is under 30 s for the single-spec run (per browser; aggregated ~15-30 s for all three).
+  - [x] From the repo root: `npm run lint && npm run typecheck && npm run test`. All must pass with zero warnings / zero errors / zero changes to existing test counts (the harness adds Playwright tests but they live OUTSIDE the Vitest / node:test paths, so unit/integration counts stay exactly where they were after Story 2.7).
+  - [x] Verify `npm run test` (without `:e2e`) does NOT trigger any `playwright` invocation. If it does, AC #3 / Task 2 was incomplete — fix the explicit allow-list and re-run.
 
-- [ ] **Task 10: Document deviations and follow-ups in Dev Notes / Completion Notes**
-  - [ ] In Completion Notes, record the EXACT pinned versions of `@playwright/test` and `@axe-core/playwright` from the lockfile (e.g., `@playwright/test@1.49.1`).
-  - [ ] If any AC could not be implemented as written (e.g., a Playwright API was removed/renamed in the latest version), document the deviation clearly with the workaround chosen, the version it was tested against, and the recommended replacement-spec citation.
-  - [ ] If `webServer` auto-spawn proved unreliable in your environment (e.g., docker-compose race with the dev shell), document the diagnostic and either fix it in this story OR file a deferred item with a concrete repro.
+- [x] **Task 10: Document deviations and follow-ups in Dev Notes / Completion Notes**
+  - [x] In Completion Notes, record the EXACT pinned versions of `@playwright/test` and `@axe-core/playwright` from the lockfile (e.g., `@playwright/test@1.49.1`).
+  - [x] If any AC could not be implemented as written (e.g., a Playwright API was removed/renamed in the latest version), document the deviation clearly with the workaround chosen, the version it was tested against, and the recommended replacement-spec citation.
+  - [x] If `webServer` auto-spawn proved unreliable in your environment (e.g., docker-compose race with the dev shell), document the diagnostic and either fix it in this story OR file a deferred item with a concrete repro.
 
 ## Dev Notes
 
@@ -452,13 +452,44 @@ There are no Vitest tests added by this story.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-opus-4-7 (1M context)
 
 ### Debug Log References
 
+- Verified `npm run test` from repo root after the `test:*` glob fix runs only `test:shared`, `test:api`, `test:web` — zero Playwright references in output (`grep -ciE "playwright|test:e2e"` returns 0).
+- Verified dev stack already running locally on `:3000` and `:4000` before the E2E run; Playwright's `reuseExistingServer: !process.env.CI` correctly skipped the spawn and ran the canary against the existing stack.
+- Browser binaries downloaded once via `playwright install --with-deps chromium firefox webkit` to `~/Library/Caches/ms-playwright/` (Chromium-headless-shell 147.0.7727.15, Firefox 148.0.2, WebKit 26.4 — all transient, not in the repo).
+
 ### Completion Notes List
 
+- **Pinned versions (from `package-lock.json`):**
+  - `@playwright/test@1.59.1` (caret-ranged in `apps/web/package.json` as `^1.59.1`).
+  - `@axe-core/playwright@4.11.3` (caret-ranged as `^4.11.3`). Installed but UNUSED in this story per spec — pre-installed for the future P1-013 axe-core scan story to avoid an "npm install on every machine" follow-up at that point.
+- **Test-results vs. expected:**
+  - All 3 Playwright projects (chromium / firefox / webkit) PASSED on the canary `xss-payload.spec.ts` — total 3 test results, 17.5 s aggregated wall-clock (chromium 2.5 s, firefox 1.2 s, webkit 2.2 s) — well under the 30 s/browser bound from AC #9.
+  - Vitest web suite: 94 tests across 6 files — UNCHANGED from Story 2.7 baseline (no regressions).
+  - `npm run lint` / `npm run typecheck` / `npm run test`: all clean (zero warnings, zero errors).
+- **`tsconfig.json` already covered `e2e/**/*.ts`:** `apps/web/tsconfig.json` `include` uses `**/*.ts` and `**/*.tsx`, which subsumes `e2e/**`. No edit needed (verified per Task 6).
+- **ESLint cross-app ban did NOT block the spec:** the canary spec uses no `@todo-app/shared` import (it consumes only `@playwright/test` + `node:crypto` and a structural `{ id: string }` cast on the API response). The relaxation hook from AC #11 / Task 6 was therefore not exercised; if a future Epic 3 spec needs `Todo` from shared, the ban relaxation can be added at that point.
+- **No spec deviations.** Every AC implemented as written. The `playwright.config.ts` matches the AC #1 / Task 3 code block byte-for-byte; the canary spec matches AC #4 / Task 4 byte-for-byte.
+- **`webServer` auto-spawn not exercised end-to-end** — the dev stack was already running locally, so `reuseExistingServer` took the reuse path. This is the expected developer-laptop case. The spawn path will be exercised the next time a contributor runs `npm run test:e2e` on a clean tree (e.g., right after `git clone`) or in CI when the harness gets wired up; if the spawn path proves unreliable then, document and revisit per Task 10.
+- **Closes deferred-work.md:115** — root `package.json` `test` script is now `npm-run-all --print-label test:shared test:api test:web` (explicit allow-list, not the `test:*` glob). The deferral entry can be removed or annotated as resolved.
+
 ### File List
+
+NEW:
+
+- `apps/web/playwright.config.ts`
+- `apps/web/e2e/xss-payload.spec.ts`
+- `apps/web/e2e/README.md`
+
+MODIFIED:
+
+- `apps/web/package.json` (3 scripts + 2 devDeps)
+- `apps/web/.gitignore` (4 Playwright artifact entries)
+- `package.json` (1 root script + `test:*` glob → explicit allow-list)
+- `package-lock.json` (auto-updated by `npm install` for the new devDeps)
+- `README.md` (1 row in Useful Scripts table + new "End-to-end tests" subsection)
 
 ### Review Findings
 
@@ -467,3 +498,4 @@ There are no Vitest tests added by this story.
 | Date       | Author      | Change                                                                                  |
 | ---------- | ----------- | --------------------------------------------------------------------------------------- |
 | 2026-04-30 | Romulo + AI | Initial story creation. Closes ASR-1 (Playwright + axe-core harness pinning) and lands the P0-013 stored-XSS canary E2E test. Slot `3-0-` precedes 3-1 in Epic 3 to honor the original "pre-Story 1.7" timeline without renumbering existing 3.1-3.6 stories. |
+| 2026-04-30 | Romulo + AI | Dev-Story implementation. Playwright config + canary XSS spec + scripts + .gitignore + READMEs landed; `@playwright/test@1.59.1` and `@axe-core/playwright@4.11.3` pinned; root `test:*` glob replaced with explicit allow-list (closes deferred-work.md:115). Sanity gate green; canary passes 3/3 browsers in 17.5 s. Status → review. |
