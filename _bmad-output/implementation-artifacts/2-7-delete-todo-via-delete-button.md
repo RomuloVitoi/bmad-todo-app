@@ -1,6 +1,6 @@
 # Story 2.7: Delete todo via delete button
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -1127,9 +1127,17 @@ claude-opus-4-7 (1M context)
 
 Total: 8 files modified, 0 added, 0 deleted. No `package.json` or `package-lock.json` changes.
 
+### Review Findings
+
+Code-review run on 2026-04-30 against `780df6f..0969e15`. Three layers: Blind Hunter (adversarial, diff-only — 21 raw findings), Edge Case Hunter (path tracer, JSON — 9 raw findings), Acceptance Auditor (16/16 ACs PASS or N/V; no guardrail violations). Triage: 0 decisions, 0 patches, 2 deferred, ~28 dismissed (mostly spec-ratified design choices: `.then(onSuccess, onReject)` shape, no `signal` plumbing, `[state.status, state.todos]` deps, field-by-field `previousTodo` strip, no client-side `encodeURIComponent`, no 204-status check, no `aria-busy`, optimistic-only-on-`success` guard).
+
+- [x] \[Review]\[Defer] Rapid double-click on delete button can issue two DELETE requests; second 404 → `deleteFailed` re-inserts the just-deleted row (`apps/web/src/components/TodoApp.tsx:108-127`) — deferred, structurally adjacent to Story 2.6's deferred concurrent-rapid-toggle race. The reducer's `deleteOptimistic` no-ops on a missing id so the second optimistic dispatch is harmless, but the second `deleteTodo()` still fires before re-render hides the button; on 404 the rollback re-inserts. Mitigations (track in-flight ids in a ref, or disable the button on click) are UX-polish concerns reserved for an Epic 3 hardening pass alongside the toast/error surface (Story 3.2).
+- [x] \[Review]\[Defer] `deleteFailed` reducer splices `todo` at the clamped index without checking for an existing entry with the same id (`apps/web/src/lib/reducer.ts:119-128`) — deferred, latent until visibility-refetch lands. If a future visibility refetch resurrects the row before the rollback fires, `next.splice(clamped, 0, todo)` would create a duplicate id → React key collision. The race is inert today (no visibility refetch wired); aligned with Story 2.5's deferred "visibility refetch races optimistic POST" item. Hardening belongs to Story 3.4 (initial-load error recovery / refetch UX), where the reducer's optimistic-action handlers should grow id-dedup guards.
+
 ## Change Log
 
 | Date       | Change                                                                                                                                                                                                                                                                                                                          |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-04-30 | Story created via `/bmad-create-story`. Status: backlog → ready-for-dev. Story slot: Epic 2, Story 7 (delete vertical slice; consumes Story 2.4's `deleteOptimistic`/`deleteFailed`; mirrors Story 2.5/2.6's three-layer orchestration; closes Epic 2). Zero new runtime deps; native `<button>` for delete affordance.            |
 | 2026-04-30 | Dev-Story execution. Status: ready-for-dev → in-progress → review. Implemented all 16 ACs across the 8 spec files. Web tests 79 → 94 (+15: 5 `deleteTodo` wrapper, 7 `<TodoItem>` delete behaviors, 3 `<TodoApp>` delete-journey). Lint clean, typecheck clean, no spec deviations, zero new deps. Source-only commit: `0969e15` `feat(web): delete todo via delete button (Story 2.7)`. |
+| 2026-04-30 | Code-Review complete via `/bmad-code-review` (range `780df6f..0969e15`). Status: review → done. Three layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (16/16 ACs PASS or N/V; no guardrail/watch-out/out-of-scope violations). Triage: 0 decision-needed, 0 patches, 2 deferred, ~28 dismissed as noise. Both deferrals fold into Epic 3 hardening backlog (rapid double-click race → Story 3.2 toast surface; reducer dedup → Story 3.4 refetch UX). Epic 2 closes — all four reducer optimistic action triplets have a UI consumer; PRD core-loop FRs (FR1-FR4, FR17, FR25) exercised end-to-end. |

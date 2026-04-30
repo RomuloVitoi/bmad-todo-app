@@ -43,6 +43,7 @@ last_updated: 2026-04-30 # 2-7 review
 # 2026-04-30: 2-6 review → done (Code-Review: 0 decisions, 0 patches, 5 defers, ~28 dismissed; Acceptance Auditor 16/16 ACs PASS; all 5 deferrals are spec-ratified or pre-existing api-wrapper patterns folded into existing hardening backlog)
 # 2026-04-30: 2-7 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-30: 2-7 in-progress → review (Dev-Story: deleteTodo + TodoItem delete <button> + handleDelete vertical slice; lint/typecheck clean; web tests 79 → 94; 0 new deps; no spec deviations; commit 0969e15; closes Epic 2 UI)
+# 2026-04-30: 2-7 review → done (Code-Review: 0 decisions, 0 patches, 2 defers, ~28 dismissed; Acceptance Auditor 16/16 ACs PASS or N/V; all deferrals fold into Epic 3 hardening — rapid double-click race + reducer dedup; Epic 2 UI closes)
 # 2026-04-29: 1-8 ready-for-dev → in-progress → review
 # 2026-04-29: 1-1 review → done (Run 2 review: 7 patches applied, 5 defers logged)
 # 2026-04-29: 1-2 review → done (Run 2 review: 0 patches, 5 defers — all ACs met, tightening = future scope)
@@ -106,7 +107,7 @@ development_status:
   2-4-reducer-extensions-for-optimistic-mutations: done
   2-5-create-todo-via-todoinput-full-vertical-slice: done
   2-6-toggle-completion-via-radix-checkbox: done
-  2-7-delete-todo-via-delete-button: review
+  2-7-delete-todo-via-delete-button: done
   epic-2-retrospective: optional
 
   epic-3: backlog

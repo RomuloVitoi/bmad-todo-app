@@ -2,6 +2,13 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-7 (2026-04-30)
+
+### Story 2.7 — delete todo via delete button (commit `0969e15`)
+
+- **Rapid double-click on delete button issues two DELETE requests; second 404 → `deleteFailed` re-inserts the just-deleted row** — [apps/web/src/components/TodoApp.tsx:108-127](../../apps/web/src/components/TodoApp.tsx#L108-L127). The reducer's `deleteOptimistic` no-ops on a missing id (so the second optimistic dispatch is harmless), but the second `deleteTodo()` still fires before re-render hides the button; on 404 the rollback re-inserts. Structurally adjacent to Story 2.6's deferred concurrent-rapid-toggle race. Mitigations (track in-flight ids in a ref, or disable the button on click + restore on settle) are UX-polish concerns reserved for an Epic 3 hardening pass alongside the toast/error surface (Story 3.2).
+- **`deleteFailed` reducer splices `todo` at the clamped index without checking for an existing entry with the same id** — [apps/web/src/lib/reducer.ts:119-128](../../apps/web/src/lib/reducer.ts#L119-L128). Latent today — visibility refetch is not yet wired. Once it lands, a refetch that resurrects the row before the rollback fires would let `next.splice(clamped, 0, todo)` create a duplicate id → React key collision. Aligned with Story 2.5's deferred "visibility refetch races optimistic POST" item; same family of races. Hardening belongs to Story 3.4 (initial-load error recovery / refetch UX), where the reducer's optimistic-action handlers should grow id-dedup guards.
+
 ## Deferred from: code review of story 2-6 (2026-04-30)
 
 ### Story 2.6 — toggle completion via Radix Checkbox (commit `8361df8`)
