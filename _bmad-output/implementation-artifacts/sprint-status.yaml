@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-04-30 # 2-7 review
+last_updated: 2026-04-30 # 3-0 ready-for-dev
+# 2026-04-30: epic-3 backlog → in-progress (Create-Story: first story 3-0 created; closes ASR-1 from test-design phase)
+# 2026-04-30: 3-0 (new) → ready-for-dev (Create-Story: Playwright + axe-core E2E harness scaffold + P0-013 stored-XSS canary; apps/web/e2e/, playwright.config.ts, 3 browser projects, webServer auto-spawn against scripts/dev.sh; ~250 LOC across 8-10 files; +2 devDeps @playwright/test + @axe-core/playwright; closes deferred-work.md:115 test:* glob fix)
 # 2026-04-30: 2-7 backlog → ready-for-dev (Create-Story: delete-button vertical slice closing Epic 2; deleteTodo + TodoItem extension + handleDelete; ~340 LOC across 8 files; 0 new deps; native <button>)
 # 2026-04-30: 2-6 backlog → ready-for-dev (Create-Story: Radix Checkbox toggle vertical slice; updateTodo + TodoItem rewrite + handleToggle; ~380 LOC across 8 files; +1 runtime dep @radix-ui/react-checkbox)
 # 2026-04-30: 2-6 ready-for-dev → in-progress (Dev-Story: starting implementation)
@@ -110,7 +112,8 @@ development_status:
   2-7-delete-todo-via-delete-button: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
+  epic-3: in-progress
+  3-0-playwright-e2e-harness: ready-for-dev
   3-1-toast-infrastructure-radix-toast-reducer-slice: backlog
   3-2-mutation-failure-toasts-with-user-facing-error-messages: backlog
   3-3-preserve-todoinput-text-on-add-failure-fr19: backlog
