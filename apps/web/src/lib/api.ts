@@ -96,3 +96,48 @@ export async function createTodo(
   }
   return parsed.data;
 }
+
+export async function updateTodo(
+  id: string,
+  completed: boolean,
+  signal?: AbortSignal,
+): Promise<Todo> {
+  const requestId = newRequestId();
+  const response = await fetch(`${API_URL}/todos/${id}`, {
+    method: 'PATCH',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'x-request-id': requestId,
+    },
+    body: JSON.stringify({ completed }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw await ApiError.fromResponse(response);
+  }
+
+  const responseRequestId = response.headers.get('x-request-id') ?? requestId;
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Malformed JSON in successful response',
+      requestId: responseRequestId,
+    });
+  }
+
+  const parsed = TodoSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError({
+      statusCode: response.status,
+      message: 'Response did not match the expected todo schema',
+      requestId: responseRequestId,
+    });
+  }
+  return parsed.data;
+}

@@ -205,3 +205,125 @@ describe('createTodo()', () => {
     });
   });
 });
+
+describe('updateTodo()', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+
+  it('issues PATCH /todos/:id with x-request-id, content-type, and JSON body { completed: true }', async () => {
+    const todo = {
+      id,
+      text: 'pick up milk',
+      completed: true,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    mockFetchOnce(
+      new Response(JSON.stringify(todo), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const { updateTodo } = await import('./api');
+    const result = await updateTodo(id, true);
+    expect(result).toEqual(todo);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`http://localhost:4000/todos/${id}`);
+    expect(init).toMatchObject({
+      method: 'PATCH',
+      headers: expect.objectContaining({
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-request-id': expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      }),
+      body: JSON.stringify({ completed: true }),
+    });
+  });
+
+  it('issues body { completed: false } when un-completing', async () => {
+    const todo = {
+      id,
+      text: 'pick up milk',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    mockFetchOnce(new Response(JSON.stringify(todo), { status: 200 }));
+    const { updateTodo } = await import('./api');
+    await updateTodo(id, false);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const init = fetchMock.mock.calls[0]![1]!;
+    expect(init.body).toBe(JSON.stringify({ completed: false }));
+  });
+
+  it('throws ApiError with status, message, and requestId when the server returns 404', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 404,
+          error: 'Not Found',
+          message: 'todo not found',
+        }),
+        {
+          status: 404,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': 'srv-not-found',
+          },
+        },
+      ),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 404,
+      message: 'todo not found',
+      requestId: 'srv-not-found',
+    });
+  });
+
+  it('throws ApiError with requestId === undefined when the server omits the x-request-id header on 500', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'oops',
+        }),
+        { status: 500 },
+      ),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 500,
+      requestId: undefined,
+    });
+  });
+
+  it('throws ApiError when the 200 body fails TodoSchema parsing (server contract drift)', async () => {
+    mockFetchOnce(
+      new Response(JSON.stringify({ id: 'not-a-uuid', text: 'x' }), {
+        status: 200,
+      }),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Response did not match the expected todo schema',
+    });
+  });
+
+  it('throws ApiError when the 200 body is malformed JSON', async () => {
+    mockFetchOnce(
+      new Response('not json {', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Malformed JSON in successful response',
+    });
+  });
+});

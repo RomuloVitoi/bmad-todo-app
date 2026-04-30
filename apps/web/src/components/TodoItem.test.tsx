@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { Todo } from '@todo-app/shared';
+import userEvent from '@testing-library/user-event';
+import type { TodoEntry } from '@/lib/reducer';
 import TodoItem from './TodoItem';
 
-const baseTodo: Todo = {
+const baseTodo: TodoEntry = {
   id: '11111111-1111-4111-8111-111111111111',
   text: 'pick up milk',
   completed: false,
@@ -25,47 +26,104 @@ afterEach(() => {
 });
 
 describe('<TodoItem />', () => {
-  it('renders an active todo with default visual treatment', () => {
-    render(<TodoItem todo={baseTodo} />);
+  it('renders an active todo with default visual treatment and aria-checked=false on the checkbox', () => {
+    render(<TodoItem todo={baseTodo} onToggle={vi.fn()} />);
     const li = screen.getByTestId('todo-item');
-    expect(li).toHaveTextContent('pick up milk');
     expect(li).toHaveAttribute('data-completed', 'false');
-    expect(li).toHaveAttribute('aria-checked', 'false');
-    const text = li.querySelector('span:last-child');
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    const text = screen.getByTestId('todo-item-text');
+    expect(text).toHaveTextContent('pick up milk');
     expect(text).not.toHaveClass('line-through');
   });
 
-  it('renders a completed todo with strikethrough and aria-checked=true', () => {
-    render(<TodoItem todo={{ ...baseTodo, completed: true }} />);
+  it('renders a completed todo with strikethrough and aria-checked=true on the checkbox', () => {
+    render(
+      <TodoItem todo={{ ...baseTodo, completed: true }} onToggle={vi.fn()} />,
+    );
     const li = screen.getByTestId('todo-item');
     expect(li).toHaveAttribute('data-completed', 'true');
-    expect(li).toHaveAttribute('aria-checked', 'true');
-    const text = li.querySelector('span:last-child');
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    const text = screen.getByTestId('todo-item-text');
     expect(text).toHaveClass('line-through');
   });
 
   it('renders the todo text verbatim (no escaping shenanigans, NFR17 React JSX)', () => {
-    const xss: Todo = {
+    const xss: TodoEntry = {
       ...baseTodo,
       text: '<script>alert("x")</script>',
     };
-    render(<TodoItem todo={xss} />);
+    render(<TodoItem todo={xss} onToggle={vi.fn()} />);
     const li = screen.getByTestId('todo-item');
     expect(li).toHaveTextContent('<script>alert("x")</script>');
     expect(li.querySelector('script')).toBeNull();
   });
 
-  it('exposes NO interactive affordances (no buttons, no inputs, no role="button")', () => {
-    render(<TodoItem todo={baseTodo} />);
-    expect(screen.queryByRole('button')).toBeNull();
-    expect(screen.queryByRole('checkbox')).toBeNull();
-    expect(screen.queryByRole('textbox')).toBeNull();
+  it('exposes a checkbox role for the row and labels it with the todo text', () => {
+    render(<TodoItem todo={baseTodo} onToggle={vi.fn()} />);
+    const checkbox = screen.getByRole('checkbox', { name: 'pick up milk' });
+    expect(checkbox).toBeInTheDocument();
   });
 
   it('handles a 500-char text without horizontal overflow class violations (break-words present)', () => {
-    const longText: Todo = { ...baseTodo, text: 'a'.repeat(500) };
-    render(<TodoItem todo={longText} />);
-    const text = screen.getByTestId('todo-item').querySelector('span:last-child');
+    const longText: TodoEntry = { ...baseTodo, text: 'a'.repeat(500) };
+    render(<TodoItem todo={longText} onToggle={vi.fn()} />);
+    const text = screen.getByTestId('todo-item-text');
     expect(text).toHaveClass('break-words');
+  });
+
+  it('calls onToggle(id, true) when the checkbox is clicked on an active todo', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(<TodoItem todo={baseTodo} onToggle={onToggle} />);
+    await user.click(screen.getByRole('checkbox'));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onToggle).toHaveBeenCalledWith(baseTodo.id, true);
+  });
+
+  it('calls onToggle(id, false) when the checkbox is clicked on a completed todo', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TodoItem
+        todo={{ ...baseTodo, completed: true }}
+        onToggle={onToggle}
+      />,
+    );
+    await user.click(screen.getByRole('checkbox'));
+    expect(onToggle).toHaveBeenCalledWith(baseTodo.id, false);
+  });
+
+  it('calls onToggle when Space is pressed with the checkbox focused', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(<TodoItem todo={baseTodo} onToggle={onToggle} />);
+    const checkbox = screen.getByRole('checkbox');
+    checkbox.focus();
+    await user.keyboard(' ');
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onToggle).toHaveBeenCalledWith(baseTodo.id, true);
+  });
+
+  it('does NOT call onToggle when Enter is pressed with the checkbox focused', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(<TodoItem todo={baseTodo} onToggle={onToggle} />);
+    screen.getByRole('checkbox').focus();
+    await user.keyboard('{Enter}');
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('renders the checkbox as disabled when todo.pending === true and does NOT call onToggle on click', async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TodoItem todo={{ ...baseTodo, pending: true }} onToggle={onToggle} />,
+    );
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeDisabled();
+    await user.click(checkbox);
+    expect(onToggle).not.toHaveBeenCalled();
   });
 });

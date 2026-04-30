@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 beforeEach(() => {
@@ -144,5 +144,91 @@ describe('<TodoApp /> create journey', () => {
 
     await screen.findByTestId('todo-list-loading');
     expect(screen.queryByLabelText(/add a todo/i)).toBeNull();
+  });
+});
+
+describe('<TodoApp /> toggle journey', () => {
+  const seed = {
+    id: '11111111-1111-4111-8111-111111111111',
+    text: 'pick up milk',
+    completed: false,
+    createdAt: '2026-04-29T00:00:00.000Z',
+  };
+
+  it('happy path: GET → click → optimistic checked → PATCH resolves → reconciled', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...seed, completed: true }, { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: seed.text });
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    const user = userEvent.setup();
+    await user.click(checkbox);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: seed.text }),
+      ).toHaveAttribute('aria-checked', 'true'),
+    );
+
+    const patchCall = fetchMock.mock.calls[1]!;
+    expect(patchCall[0]).toBe(`http://localhost:4000/todos/${seed.id}`);
+    expect(patchCall[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ completed: true }),
+    });
+
+    const items = await screen.findAllByTestId('todo-item');
+    expect(items).toHaveLength(1);
+  });
+
+  it('rollback: optimistic flip reverts when PATCH rejects with 500', async () => {
+    let resolvePatch!: (response: Response) => void;
+    const patchPromise = new Promise<Response>((resolve) => {
+      resolvePatch = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockReturnValueOnce(patchPromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: seed.text });
+    const user = userEvent.setup();
+    await user.click(checkbox);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: seed.text }),
+      ).toHaveAttribute('aria-checked', 'true'),
+    );
+
+    resolvePatch(
+      jsonResponse(
+        {
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'oops',
+        },
+        { status: 500 },
+      ),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: seed.text }),
+      ).toHaveAttribute('aria-checked', 'false'),
+    );
   });
 });

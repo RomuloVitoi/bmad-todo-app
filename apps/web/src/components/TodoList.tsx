@@ -3,9 +3,10 @@ import TodoItem from './TodoItem';
 
 export interface TodoListProps {
   state: TodoState;
+  onToggle: (id: string, nextCompleted: boolean) => void;
 }
 
-export default function TodoList({ state }: TodoListProps) {
+export default function TodoList({ state, onToggle }: TodoListProps) {
   const { status, todos } = state;
 
   if (status === 'idle' || status === 'loading') {
@@ -66,7 +67,7 @@ export default function TodoList({ state }: TodoListProps) {
       className="flex flex-col gap-2"
     >
       {todos.map((todo) => (
-        <TodoItem key={todo.id} todo={todo} />
+        <TodoItem key={todo.id} todo={todo} onToggle={onToggle} />
       ))}
     </ul>
   );

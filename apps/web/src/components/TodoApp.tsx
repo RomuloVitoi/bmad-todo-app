@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer } from 'react';
-import { createTodo, getTodos } from '@/lib/api';
+import { createTodo, getTodos, updateTodo } from '@/lib/api';
 import { ApiError } from '@/lib/errors';
 import { initialState, reducer } from '@/lib/reducer';
 import TodoInput from './TodoInput';
@@ -68,13 +68,43 @@ export default function TodoApp() {
     );
   }, []);
 
+  const handleToggle = useCallback(
+    (id: string, nextCompleted: boolean): void => {
+      if (state.status !== 'success') return;
+      const target = state.todos.find((t) => t.id === id);
+      if (!target) return;
+      if (target.pending === true) return;
+      const previousCompleted = target.completed;
+
+      dispatch({
+        type: 'toggleOptimistic',
+        payload: { id, completed: nextCompleted },
+      });
+      updateTodo(id, nextCompleted).then(
+        (todo) => {
+          dispatch({
+            type: 'addReconcile',
+            payload: { tempId: id, todo },
+          });
+        },
+        () => {
+          dispatch({
+            type: 'toggleFailed',
+            payload: { id, previousCompleted },
+          });
+        },
+      );
+    },
+    [state.status, state.todos],
+  );
+
   return (
     <section aria-labelledby="todos-heading" className="flex flex-col gap-6">
       <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
         Shared Todos
       </h1>
       {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
-      <TodoList state={state} />
+      <TodoList state={state} onToggle={handleToggle} />
     </section>
   );
 }
