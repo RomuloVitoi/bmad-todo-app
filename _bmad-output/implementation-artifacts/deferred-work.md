@@ -2,6 +2,17 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 2-5 (2026-04-29)
+
+### Story 2.5 — create-todo full vertical slice (commit `73b60ca`)
+
+- **Visibility refetch races optimistic POST → silent reconcile no-op** — [apps/web/src/components/TodoApp.tsx:36-67](../../apps/web/src/components/TodoApp.tsx#L36-L67) + [apps/web/src/lib/reducer.ts:42-52](../../apps/web/src/lib/reducer.ts#L42-L52). If `loadSuccess` (visibility refetch) replaces `state.todos` while a `createTodo` is in flight, the resolving `addReconcile` finds no `tempId` and no-ops; the just-created server row only appears on the next GET. Cross-epic interaction — resolution belongs in Epic 3 (Stories 3.4/3.5) where retry/refetch UX is in scope.
+- **IME composition Enter submits partial CJK text** — [apps/web/src/components/TodoInput.tsx:24-29](../../apps/web/src/components/TodoInput.tsx#L24-L29). `<form onSubmit>` fires on Enter even during IME composition (`event.nativeEvent.isComposing === true`), so a CJK candidate-confirmation Enter can submit the partial composition. Suppress submit while composing in a future a11y/UX hardening pass; no PRD requirement today.
+- **`?? requestId` does not fall back when server sends empty `x-request-id` header** — [apps/web/src/lib/api.ts:76](../../apps/web/src/lib/api.ts#L76) (createTodo) and [apps/web/src/lib/api.ts:32](../../apps/web/src/lib/api.ts#L32) (getTodos). `headers.get(...) ?? requestId` only catches null/undefined, so an empty server header propagates as `''`. Realistic risk is low (servers don't normally emit empty headers); fix belongs in a focused hardening pass that touches both wrappers consistently.
+- **Synthetic `ApiError` on JSON-parse rejection swallows original `SyntaxError` (no cause chaining)** — [apps/web/src/lib/api.ts:79-87](../../apps/web/src/lib/api.ts#L79-L87) (createTodo) and [apps/web/src/lib/api.ts:35-43](../../apps/web/src/lib/api.ts#L35-L43) (getTodos). Bare `catch {}` discards line/column info and any abort-during-stream signal. Add `cause: error` to the synthetic `ApiError` constructor in the same hardening pass.
+- **`neverResolves` test promise leaks past test boundary** — [apps/web/src/components/TodoApp.test.tsx:139-147](../../apps/web/src/components/TodoApp.test.tsx#L139-L147). `vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))` leaves a dangling microtask that survives `vi.unstubAllGlobals()`. Not a runtime defect; flaky-test seed under parallelism. Tighten by stubbing with an `AbortController.signal` and aborting in `afterEach`, or by mocking with a Response that never flushes.
+- **No explicit three-rapid-submit test for AC #9** — [apps/web/src/components/TodoApp.test.tsx](../../apps/web/src/components/TodoApp.test.tsx). AC #9 ("three rapid submits → three reconciled todos, distinct tempIds, no orphans") is structurally satisfied by the reducer's index-replacement `addReconcile` plus per-call `crypto.randomUUID()`, but no test pins the multi-submit interleaving. Optional coverage addition; not a regression.
+
 ## Deferred from: code review of story 2-4 (2026-04-29)
 
 ### Story 2.4 — reducer extensions for optimistic mutations (commit `505c6df`)

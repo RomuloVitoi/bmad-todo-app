@@ -71,6 +71,7 @@ last_updated: 2026-04-29
 # 2026-04-29: 2-5 backlog → ready-for-dev (Create-Story: createTodo + presentational TodoInput + TodoApp.handleAdd orchestration; 16 ACs, ~470 LOC across 6 files, 3 new)
 # 2026-04-29: 2-5 ready-for-dev → in-progress (Dev-Story: starting implementation)
 # 2026-04-29: 2-5 in-progress → review (Dev-Story: createTodo + TodoInput + TodoApp.handleAdd; lint/typecheck clean; web tests 42 → 66; +1 devDep @testing-library/user-event; 1 minor rollback-test scaffolding deviation documented)
+# 2026-04-29: 2-5 review → done (Code-Review: 0 decisions, 0 patches, 6 defers, ~22 dismissed; Acceptance Auditor 15/16 PASS + AC #9 PARTIAL structurally satisfied; all 9 architectural guardrails PASS)
 project: todo-app
 project_key: NOKEY
 tracking_system: file-system
@@ -96,7 +97,7 @@ development_status:
   2-2-patch-todos-id-endpoint-with-lww-semantics: done
   2-3-delete-todos-id-endpoint: done
   2-4-reducer-extensions-for-optimistic-mutations: done
-  2-5-create-todo-via-todoinput-full-vertical-slice: review
+  2-5-create-todo-via-todoinput-full-vertical-slice: done
   2-6-toggle-completion-via-radix-checkbox: backlog
   2-7-delete-todo-via-delete-button: backlog
   epic-2-retrospective: optional

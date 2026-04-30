@@ -1,6 +1,6 @@
 # Story 2.5: Create todo via `TodoInput` (full vertical slice)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -784,6 +784,17 @@ So that I can add to the shared list with perceptibly zero latency (FR1, FR17, N
   - [x] Commit message: `feat(web): create-todo full vertical slice via TodoInput (Story 2.5)`
   - [x] **Do NOT** stage anything in `_bmad-output/`, `node_modules/`, `.env*`, `apps/api/**`, `packages/shared/**`, or any other component file.
   - [x] Record commit hash in the Change Log when the user runs the commit.
+
+### Review Findings
+
+*Code review (2026-04-29, commit `73b60ca`). 0 decision-needed, 0 patch, 6 deferred, ~22 dismissed as noise.*
+
+- [x] \[Review]\[Defer] Visibility refetch races optimistic POST → silent reconcile no-op (`apps/web/src/components/TodoApp.tsx:36-67`) — deferred, cross-epic interaction. If `loadSuccess` (visibility refetch) wholesale-replaces `state.todos` while a `createTodo` is in flight, the resolving `addReconcile` finds no `tempId` and no-ops; the just-created server row never enters the UI until the next GET. Resolution requires a reducer or load-flow architectural decision (Epic 3 territory — Stories 3.4/3.5).
+- [x] \[Review]\[Defer] IME composition Enter submits partial CJK text (`apps/web/src/components/TodoInput.tsx:24-29`) — deferred, no story owns it. `<form onSubmit>` fires on Enter even when `event.nativeEvent.isComposing === true`, so a CJK candidate-confirmation Enter can submit the partial composition. Industry convention is to suppress submit while composing; flag for Story 3.x or a future a11y/UX hardening pass.
+- [x] \[Review]\[Defer] `?? requestId` only handles null/undefined, not empty string (`apps/web/src/lib/api.ts:76`) — deferred, pre-existing pattern. If the server responds with an empty `x-request-id` header, `headers.get(...) ?? requestId` returns `''` instead of falling back to the client-generated id. Pattern is mirrored verbatim from `getTodos` (`apps/web/src/lib/api.ts:32`); fix belongs in a focused hardening pass that touches both call sites.
+- [x] \[Review]\[Defer] Synthetic `ApiError` on JSON-parse rejection swallows the original `SyntaxError` cause (`apps/web/src/lib/api.ts:79-87`) — deferred, pre-existing pattern. Bare `catch {}` discards the original error (line/column info, abort errors, etc.) and replaces it with a generic message; no `cause` chaining. Mirrors `getTodos` (`apps/web/src/lib/api.ts:35-43`); same hardening pass.
+- [x] \[Review]\[Defer] `neverResolves` test promise leaks past test boundary (`apps/web/src/components/TodoApp.test.tsx:139-147`) — deferred, test hygiene. The "hides until success" test stubs `fetch` with `new Promise(() => {})` and never aborts/resolves it; the dangling microtask survives `vi.unstubAllGlobals()`. Not a runtime defect but a flaky-test seed under `--threads`. Tighten by passing an `AbortController.signal` and aborting in `afterEach`, or by resolving with a never-flushed Response.
+- [x] \[Review]\[Defer] AC #9 PARTIAL — no explicit three-rapid-submit test (`apps/web/src/components/TodoApp.test.tsx`) — deferred, structurally satisfied. AC #9 ("three rapid submits → three reconciled todos, distinct tempIds, no orphans") is provable from the reducer's index-replacement `addReconcile` (`apps/web/src/lib/reducer.ts:67-77`) plus per-call `crypto.randomUUID()` (`apps/web/src/components/TodoApp.tsx:58`); the property holds without an explicit test. An optional test would tighten coverage but is not a regression.
 
 ## Dev Notes
 
