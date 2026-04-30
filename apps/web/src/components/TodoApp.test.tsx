@@ -232,3 +232,100 @@ describe('<TodoApp /> toggle journey', () => {
     );
   });
 });
+
+describe('<TodoApp /> delete journey', () => {
+  const seed = {
+    id: '11111111-1111-4111-8111-111111111111',
+    text: 'pick up milk',
+    completed: false,
+    createdAt: '2026-04-29T00:00:00.000Z',
+  };
+
+  it('happy path: GET → click delete → optimistic removal → DELETE 204 → row stays gone', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: /^delete: pick up milk$/i,
+    });
+    const user = userEvent.setup();
+    await user.click(deleteBtn);
+
+    // Optimistic: the row disappears immediately. The list transitions
+    // from populated → empty.
+    await screen.findByTestId('todo-list-empty');
+    expect(
+      screen.queryByRole('button', { name: /^delete:/i }),
+    ).toBeNull();
+
+    // DELETE was issued with the right URL, method, and no body.
+    const deleteCall = fetchMock.mock.calls[1]!;
+    expect(deleteCall[0]).toBe(`http://localhost:4000/todos/${seed.id}`);
+    expect(deleteCall[1]).toMatchObject({ method: 'DELETE' });
+    expect(deleteCall[1]?.body).toBeUndefined();
+  });
+
+  it('rollback: optimistic removal reverts when DELETE rejects with 500 (re-insert at original index)', async () => {
+    let resolveDelete!: (response: Response) => void;
+    const deletePromise = new Promise<Response>((resolve) => {
+      resolveDelete = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockReturnValueOnce(deletePromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: /^delete: pick up milk$/i,
+    });
+    const user = userEvent.setup();
+    await user.click(deleteBtn);
+
+    // Optimistic state: row is gone while DELETE is pending.
+    await screen.findByTestId('todo-list-empty');
+
+    // Now resolve DELETE with 500 → deleteFailed → re-insert.
+    resolveDelete(
+      jsonResponse(
+        { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+        { status: 500 },
+      ),
+    );
+
+    // The row reappears at its original position.
+    const items = await screen.findAllByTestId('todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveAttribute('data-completed', 'false');
+    expect(items[0]).toHaveTextContent('pick up milk');
+  });
+
+  it('delete on a completed todo behaves identically (FR4 state independence)', async () => {
+    const completedSeed = { ...seed, completed: true };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [completedSeed] }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: /^delete: pick up milk$/i,
+    });
+    const user = userEvent.setup();
+    await user.click(deleteBtn);
+
+    await screen.findByTestId('todo-list-empty');
+  });
+});

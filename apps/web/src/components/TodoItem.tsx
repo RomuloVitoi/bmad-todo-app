@@ -7,9 +7,14 @@ import type { TodoEntry } from '@/lib/reducer';
 export interface TodoItemProps {
   todo: TodoEntry;
   onToggle: (id: string, nextCompleted: boolean) => void;
+  onDelete: (id: string) => void;
 }
 
-export default function TodoItem({ todo, onToggle }: TodoItemProps) {
+export default function TodoItem({
+  todo,
+  onToggle,
+  onDelete,
+}: TodoItemProps) {
   const completed = todo.completed;
   const pending = todo.pending === true;
   const labelId = useId();
@@ -19,6 +24,10 @@ export default function TodoItem({ todo, onToggle }: TodoItemProps) {
   ): void => {
     const next = nextChecked === true;
     onToggle(todo.id, next);
+  };
+
+  const handleDeleteClick = (): void => {
+    onDelete(todo.id);
   };
 
   return (
@@ -53,6 +62,16 @@ export default function TodoItem({ todo, onToggle }: TodoItemProps) {
       >
         {todo.text}
       </span>
+      <button
+        type="button"
+        data-testid="todo-item-delete"
+        aria-label={`Delete: ${todo.text}`}
+        disabled={pending}
+        onClick={handleDeleteClick}
+        className="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-current/10 bg-transparent outline-none hover:bg-current/5 focus-visible:ring-2 focus-visible:ring-current/40 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
     </li>
   );
 }

@@ -141,3 +141,23 @@ export async function updateTodo(
   }
   return parsed.data;
 }
+
+export async function deleteTodo(
+  id: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const requestId = newRequestId();
+  const response = await fetch(`${API_URL}/todos/${id}`, {
+    method: 'DELETE',
+    headers: {
+      accept: 'application/json',
+      'x-request-id': requestId,
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw await ApiError.fromResponse(response);
+  }
+  // 204 No Content: no body to parse, no schema to validate.
+}

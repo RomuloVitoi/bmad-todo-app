@@ -327,3 +327,104 @@ describe('updateTodo()', () => {
     });
   });
 });
+
+describe('deleteTodo()', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+
+  it('issues DELETE /todos/:id with x-request-id and no body, resolves to undefined on 204', async () => {
+    // 204 response: empty body, no content-type. Calling .json() on this
+    // would throw SyntaxError — the test proves the function does not.
+    mockFetchOnce(new Response(null, { status: 204 }));
+    const { deleteTodo } = await import('./api');
+    const result = await deleteTodo(id);
+    expect(result).toBeUndefined();
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`http://localhost:4000/todos/${id}`);
+    expect(init).toMatchObject({
+      method: 'DELETE',
+      headers: expect.objectContaining({
+        accept: 'application/json',
+        'x-request-id': expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      }),
+    });
+    expect(init?.body).toBeUndefined();
+  });
+
+  it('does NOT set a content-type header on DELETE (no body to type)', async () => {
+    mockFetchOnce(new Response(null, { status: 204 }));
+    const { deleteTodo } = await import('./api');
+    await deleteTodo(id);
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const init = fetchMock.mock.calls[0]![1]!;
+    const headers = init.headers as Record<string, string>;
+    expect(headers['content-type']).toBeUndefined();
+  });
+
+  it('throws ApiError with status, message, and requestId when the server returns 404', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 404,
+          error: 'Not Found',
+          message: 'todo not found',
+        }),
+        {
+          status: 404,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': 'srv-not-found',
+          },
+        },
+      ),
+    );
+    const { deleteTodo } = await import('./api');
+    await expect(deleteTodo(id)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 404,
+      message: 'todo not found',
+      requestId: 'srv-not-found',
+    });
+  });
+
+  it('throws ApiError with requestId === undefined when the server omits the x-request-id header on 500', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 500,
+          error: 'Internal Server Error',
+          message: 'oops',
+        }),
+        { status: 500 },
+      ),
+    );
+    const { deleteTodo } = await import('./api');
+    await expect(deleteTodo(id)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 500,
+      requestId: undefined,
+    });
+  });
+
+  it('throws ApiError on 400 (bad UUID per server validation)', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: 'params/id Invalid uuid',
+        }),
+        {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
+    );
+    const { deleteTodo } = await import('./api');
+    await expect(deleteTodo('not-a-uuid')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 400,
+    });
+  });
+});

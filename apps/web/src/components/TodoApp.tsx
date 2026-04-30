@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useReducer } from 'react';
-import { createTodo, getTodos, updateTodo } from '@/lib/api';
+import {
+  createTodo,
+  deleteTodo,
+  getTodos,
+  updateTodo,
+} from '@/lib/api';
 import { ApiError } from '@/lib/errors';
 import { initialState, reducer } from '@/lib/reducer';
 import TodoInput from './TodoInput';
@@ -98,13 +103,51 @@ export default function TodoApp() {
     [state.status, state.todos],
   );
 
+  const handleDelete = useCallback(
+    (id: string): void => {
+      if (state.status !== 'success') return;
+      const index = state.todos.findIndex((t) => t.id === id);
+      if (index === -1) return;
+      const target = state.todos[index]!;
+      if (target.pending === true) return;
+      // Strip the `pending` flag — `deleteFailed.payload.todo` is typed as
+      // the wire `Todo` (no `pending`); spreading `target` would smuggle
+      // it back into a re-inserted entry.
+      const previousTodo = {
+        id: target.id,
+        text: target.text,
+        completed: target.completed,
+        createdAt: target.createdAt,
+      };
+
+      dispatch({ type: 'deleteOptimistic', payload: { id } });
+      deleteTodo(id).then(
+        () => {
+          // 204 success: the optimistic removal is now authoritative. No
+          // dispatch needed — the row is already gone from state.
+        },
+        () => {
+          dispatch({
+            type: 'deleteFailed',
+            payload: { todo: previousTodo, index },
+          });
+        },
+      );
+    },
+    [state.status, state.todos],
+  );
+
   return (
     <section aria-labelledby="todos-heading" className="flex flex-col gap-6">
       <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
         Shared Todos
       </h1>
       {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
-      <TodoList state={state} onToggle={handleToggle} />
+      <TodoList
+        state={state}
+        onToggle={handleToggle}
+        onDelete={handleDelete}
+      />
     </section>
   );
 }

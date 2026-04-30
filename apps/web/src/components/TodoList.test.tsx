@@ -34,7 +34,7 @@ afterEach(() => {
 describe('<TodoList />', () => {
   it('renders the loading branch with aria-live="polite" and aria-busy when status is "loading"', () => {
     const state: TodoState = { status: 'loading', todos: [] };
-    render(<TodoList state={state} onToggle={vi.fn()} />);
+    render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const region = screen.getByTestId('todo-list-loading');
     expect(region).toHaveAttribute('aria-live', 'polite');
     expect(region).toHaveAttribute('aria-busy', 'true');
@@ -43,7 +43,7 @@ describe('<TodoList />', () => {
 
   it('renders the loading branch when status is "idle" (pre-mount window)', () => {
     const state: TodoState = { status: 'idle', todos: [] };
-    render(<TodoList state={state} onToggle={vi.fn()} />);
+    render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByTestId('todo-list-loading')).toHaveAttribute(
       'data-status',
       'idle',
@@ -52,7 +52,7 @@ describe('<TodoList />', () => {
 
   it('renders the empty-state with semantic <p> when status is "success" and todos is empty', () => {
     const state: TodoState = { status: 'success', todos: [] };
-    render(<TodoList state={state} onToggle={vi.fn()} />);
+    render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const empty = screen.getByTestId('todo-list-empty');
     expect(empty.tagName).toBe('P');
     expect(empty).toHaveTextContent(/no todos/i);
@@ -60,7 +60,7 @@ describe('<TodoList />', () => {
 
   it('renders a <ul> of <TodoItem>s, one per todo, with stable keys', () => {
     const state: TodoState = { status: 'success', todos: [todoA, todoB] };
-    render(<TodoList state={state} onToggle={vi.fn()} />);
+    render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const list = screen.getByTestId('todo-list');
     expect(list.tagName).toBe('UL');
     const items = within(list).getAllByTestId('todo-item');
@@ -78,7 +78,7 @@ describe('<TodoList />', () => {
       error: 'Service unavailable',
       requestId: 'corr-abc',
     };
-    render(<TodoList state={state} onToggle={vi.fn()} />);
+    render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const err = screen.getByTestId('todo-list-error');
     expect(err).toHaveAttribute('role', 'alert');
     expect(err).toHaveTextContent(/failed to load/i);
