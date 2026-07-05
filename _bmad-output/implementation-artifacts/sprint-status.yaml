@@ -1,5 +1,5 @@
 # generated: 2026-04-19
-# last_updated: 2026-04-19
+# last_updated: 2026-07-05
 # project: todo-app
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,16 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-04-30 # 3-0 done
+last_updated: 2026-07-05 # 3-2 review → done
+# 2026-07-05: 3-2 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 7/7 ACs PASS + all 9 guardrails + all 7 out-of-scope prohibitions honored, no violations/scope creep; 0 decision-needed, 0 patches, 3 defers logged to deferred-work.md — all spec-ratified: AbortError carve-out for future signal-passing story, contract-drift raw-message leak (per "Known gap, explicitly deferred"), TodoApp-level network-failure toast test gap; 5 dismissed)
+# 2026-07-05: 3-2 in-progress → review (Dev-Story: ApiError status-code → human-message mapping + networkFailure() factory; createTodo/updateTodo/deleteTodo wrap network failures; TodoApp dispatches errorShown on all 3 mutation failure paths with debug-only requestId logging; lint/typecheck clean; web tests 108 → 131; no spec deviations)
+# 2026-07-05: 3-2 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-07-05: 3-2 backlog → ready-for-dev (Create-Story: ApiError status-code → human-message mapping + networkFailure() factory; wires createTodo/updateTodo/deleteTodo failure paths in TodoApp to dispatch errorShown; ~270 LOC across 4 modified + 1 new file (errors.test.ts); 0 new deps; depends directly on Story 3.1's Toast infra)
+# 2026-07-05: 3-1 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 12 PASS / 1 PARTIAL / 0 FAIL across 7 ACs + 6 architectural guardrails, no scope creep into 3.2–3.6; 0 decision-needed, 3 patches applied — all test-only: fake-timer leak moved to afterEach, loadSuccess/loadError toast-carry-forward regression tests, non-success errorShown test; 3 defers logged to deferred-work.md — all become live only when 3.2 wires producers; 7 dismissed; web tests 105 → 108; lint/typecheck green)
+# 2026-07-05: 3-1 in-progress → review (Dev-Story: Toast infrastructure — Radix Toast wrapper + `toast` reducer slice + `errorShown`/`errorDismiss`; +1 runtime dep @radix-ui/react-toast@^1.2.18; lint/typecheck clean; web tests 94 → 105; jsdom hasPointerCapture stub added for Radix's pointer-capture calls; mechanical toast:null fixup to TodoList.test.tsx; no other spec deviations)
+# 2026-07-05: 3-1 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-07-05: 3-1 backlog → ready-for-dev (Create-Story: Toast infrastructure — Radix Toast primitive wrapper + `toast` reducer slice + `errorShown`/`errorDismiss` actions; ~210 LOC across 5 modified + 2 new files; +1 runtime dep @radix-ui/react-toast; infra-only, no mutation-handler wiring — that's Story 3.2)
+# 2026-07-05: NOTE — 3-0-1-core-journey-e2e-tests (additive story, not in epics.md's numbered sequence) reached review → done per its story file's `status: done` and commit 6cebd33, but that transition was not logged here at the time. Recorded retroactively for continuity; no status change needed (key not tracked in development_status below).
 # 2026-04-30: 3-0 review → done (Code-Review: 1 patch applied — README "End-to-end tests" subsection trimmed 16 → 14 lines to honor AC #8 ≤15-line budget; 8 defers logged to deferred-work.md, ~22 dismissed; Acceptance Auditor 9 PASS + 1 PARTIAL + 1 N/V + 1 PASS-with-caveat across 12 ACs, no FAILs; closes ASR-1 + deferred-work.md:115)
 # 2026-04-30: epic-3 backlog → in-progress (Create-Story: first story 3-0 created; closes ASR-1 from test-design phase)
 # 2026-04-30: 3-0 (new) → ready-for-dev (Create-Story: Playwright + axe-core E2E harness scaffold + P0-013 stored-XSS canary; apps/web/e2e/, playwright.config.ts, 3 browser projects, webServer auto-spawn against scripts/dev.sh; ~250 LOC across 8-10 files; +2 devDeps @playwright/test + @axe-core/playwright; closes deferred-work.md:115 test:* glob fix)
@@ -117,8 +126,8 @@ development_status:
 
   epic-3: in-progress
   3-0-playwright-e2e-harness: done
-  3-1-toast-infrastructure-radix-toast-reducer-slice: backlog
-  3-2-mutation-failure-toasts-with-user-facing-error-messages: backlog
+  3-1-toast-infrastructure-radix-toast-reducer-slice: done
+  3-2-mutation-failure-toasts-with-user-facing-error-messages: done
   3-3-preserve-todoinput-text-on-add-failure-fr19: backlog
   3-4-initial-load-error-recovery-with-retry-button-fr20: backlog
   3-5-global-unhandled-rejection-and-error-safety-net-nfr9: backlog

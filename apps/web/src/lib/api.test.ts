@@ -69,7 +69,7 @@ describe('getTodos()', () => {
     await expect(getTodos()).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 503,
-      message: 'database is unreachable',
+      message: 'Something went wrong. Please try again.',
       requestId: 'srv-correlation-xyz',
     });
   });
@@ -154,7 +154,7 @@ describe('createTodo()', () => {
     await expect(createTodo('')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 400,
-      message: 'text must be at least 1 character',
+      message: "That change couldn't be saved.",
       requestId: 'srv-abc',
     });
   });
@@ -202,6 +202,38 @@ describe('createTodo()', () => {
     await expect(createTodo('x')).rejects.toMatchObject({
       name: 'ApiError',
       message: 'Malformed JSON in successful response',
+    });
+  });
+
+  it('throws ApiError with the mapped 429 message when the server rate-limits', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: 'rate limit exceeded',
+        }),
+        { status: 429 },
+      ),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('x')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 429,
+      message: 'Too many requests — please wait a moment.',
+    });
+  });
+
+  it('throws ApiError with statusCode 0 and an offline message when fetch itself rejects (network failure)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')),
+    );
+    const { createTodo } = await import('./api');
+    await expect(createTodo('x')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 0,
+      message: "You're offline. Your change wasn't saved.",
     });
   });
 });
@@ -276,7 +308,7 @@ describe('updateTodo()', () => {
     await expect(updateTodo(id, true)).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 404,
-      message: 'todo not found',
+      message: 'This todo no longer exists.',
       requestId: 'srv-not-found',
     });
   });
@@ -324,6 +356,38 @@ describe('updateTodo()', () => {
     await expect(updateTodo(id, true)).rejects.toMatchObject({
       name: 'ApiError',
       message: 'Malformed JSON in successful response',
+    });
+  });
+
+  it('throws ApiError with the mapped 429 message when the server rate-limits', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: 'rate limit exceeded',
+        }),
+        { status: 429 },
+      ),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 429,
+      message: 'Too many requests — please wait a moment.',
+    });
+  });
+
+  it('throws ApiError with statusCode 0 and an offline message when fetch itself rejects (network failure)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')),
+    );
+    const { updateTodo } = await import('./api');
+    await expect(updateTodo(id, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 0,
+      message: "You're offline. Your change wasn't saved.",
     });
   });
 });
@@ -383,7 +447,7 @@ describe('deleteTodo()', () => {
     await expect(deleteTodo(id)).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 404,
-      message: 'todo not found',
+      message: 'This todo no longer exists.',
       requestId: 'srv-not-found',
     });
   });
@@ -425,6 +489,38 @@ describe('deleteTodo()', () => {
     await expect(deleteTodo('not-a-uuid')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 400,
+    });
+  });
+
+  it('throws ApiError with the mapped 429 message when the server rate-limits', async () => {
+    mockFetchOnce(
+      new Response(
+        JSON.stringify({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: 'rate limit exceeded',
+        }),
+        { status: 429 },
+      ),
+    );
+    const { deleteTodo } = await import('./api');
+    await expect(deleteTodo(id)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 429,
+      message: 'Too many requests — please wait a moment.',
+    });
+  });
+
+  it('throws ApiError with statusCode 0 and an offline message when fetch itself rejects (network failure)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')),
+    );
+    const { deleteTodo } = await import('./api');
+    await expect(deleteTodo(id)).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 0,
+      message: "You're offline. Your change wasn't saved.",
     });
   });
 });

@@ -7,11 +7,19 @@ export type LoadStatus = 'idle' | 'loading' | 'success' | 'error';
 // crosses the wire (TodoSchema in @todo-app/shared is `.strict()`).
 export type TodoEntry = Todo & { pending?: boolean };
 
+// Caller-supplied id (never generated inside the reducer — see the
+// no-entropy-in-reducer rule below). Exists so a consumer can
+// `key={toast.id}` the rendered Toast.Root: a fresh id on a new errorShown
+// while a toast is already open forces React to remount the Root,
+// restarting Radix's `duration` timer and re-triggering its announcer.
+export type ToastEntry = { message: string; id: string };
+
 export interface TodoState {
   status: LoadStatus;
   todos: TodoEntry[];
   error?: string;
   requestId?: string;
+  toast: ToastEntry | null;
 }
 
 export type TodoAction =
@@ -30,25 +38,32 @@ export type TodoAction =
       payload: { id: string; previousCompleted: boolean };
     }
   | { type: 'deleteOptimistic'; payload: { id: string } }
-  | { type: 'deleteFailed'; payload: { todo: Todo; index: number } };
+  | { type: 'deleteFailed'; payload: { todo: Todo; index: number } }
+  | { type: 'errorShown'; payload: { message: string; id: string } }
+  | { type: 'errorDismiss' };
 
 export const initialState: TodoState = {
   status: 'idle',
   todos: [],
+  toast: null,
 };
 
 export function reducer(state: TodoState, action: TodoAction): TodoState {
   switch (action.type) {
     case 'loadStart':
-      return { status: 'loading', todos: [] };
+      // `toast` is orthogonal to the load lifecycle — it surfaces mutation
+      // failures and the global safety net, not initial-load failures — so
+      // it is explicitly carried forward, never reset.
+      return { status: 'loading', todos: [], toast: state.toast };
     case 'loadSuccess':
-      return { status: 'success', todos: action.payload };
+      return { status: 'success', todos: action.payload, toast: state.toast };
     case 'loadError':
       return {
         status: 'error',
         todos: [],
         error: action.payload.error,
         requestId: action.payload.requestId,
+        toast: state.toast,
       };
 
     case 'addOptimistic': {
@@ -126,6 +141,16 @@ export function reducer(state: TodoState, action: TodoAction): TodoState {
       next.splice(clamped, 0, todo);
       return { ...state, todos: next };
     }
+
+    case 'errorShown':
+      return {
+        ...state,
+        toast: { message: action.payload.message, id: action.payload.id },
+      };
+
+    case 'errorDismiss':
+      if (state.toast === null) return state; // no-op reference equality
+      return { ...state, toast: null };
 
     default: {
       // Compile-time exhaustiveness: adding a TodoAction member without a case

@@ -9,6 +9,7 @@ import {
 } from '@/lib/api';
 import { ApiError } from '@/lib/errors';
 import { initialState, reducer } from '@/lib/reducer';
+import Toast from './Toast';
 import TodoInput from './TodoInput';
 import TodoList from './TodoList';
 
@@ -67,8 +68,22 @@ export default function TodoApp() {
       (todo) => {
         dispatch({ type: 'addReconcile', payload: { tempId, todo } });
       },
-      () => {
+      (err: unknown) => {
         dispatch({ type: 'addFailed', payload: { tempId } });
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.';
+        if (err instanceof ApiError) {
+          console.debug('mutation failed', {
+            requestId: err.requestId,
+            statusCode: err.statusCode,
+          });
+        }
+        dispatch({
+          type: 'errorShown',
+          payload: { message, id: crypto.randomUUID() },
+        });
       },
     );
   }, []);
@@ -92,10 +107,24 @@ export default function TodoApp() {
             payload: { tempId: id, todo },
           });
         },
-        () => {
+        (err: unknown) => {
           dispatch({
             type: 'toggleFailed',
             payload: { id, previousCompleted },
+          });
+          const message =
+            err instanceof ApiError
+              ? err.message
+              : 'Something went wrong. Please try again.';
+          if (err instanceof ApiError) {
+            console.debug('mutation failed', {
+              requestId: err.requestId,
+              statusCode: err.statusCode,
+            });
+          }
+          dispatch({
+            type: 'errorShown',
+            payload: { message, id: crypto.randomUUID() },
           });
         },
       );
@@ -126,10 +155,24 @@ export default function TodoApp() {
           // 204 success: the optimistic removal is now authoritative. No
           // dispatch needed — the row is already gone from state.
         },
-        () => {
+        (err: unknown) => {
           dispatch({
             type: 'deleteFailed',
             payload: { todo: previousTodo, index },
+          });
+          const message =
+            err instanceof ApiError
+              ? err.message
+              : 'Something went wrong. Please try again.';
+          if (err instanceof ApiError) {
+            console.debug('mutation failed', {
+              requestId: err.requestId,
+              statusCode: err.statusCode,
+            });
+          }
+          dispatch({
+            type: 'errorShown',
+            payload: { message, id: crypto.randomUUID() },
           });
         },
       );
@@ -138,16 +181,22 @@ export default function TodoApp() {
   );
 
   return (
-    <section aria-labelledby="todos-heading" className="flex flex-col gap-6">
-      <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
-        Shared Todos
-      </h1>
-      {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
-      <TodoList
-        state={state}
-        onToggle={handleToggle}
-        onDelete={handleDelete}
+    <>
+      <section aria-labelledby="todos-heading" className="flex flex-col gap-6">
+        <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
+          Shared Todos
+        </h1>
+        {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
+        <TodoList
+          state={state}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+        />
+      </section>
+      <Toast
+        toast={state.toast}
+        onDismiss={() => dispatch({ type: 'errorDismiss' })}
       />
-    </section>
+    </>
   );
 }

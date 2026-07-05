@@ -33,7 +33,7 @@ afterEach(() => {
 
 describe('<TodoList />', () => {
   it('renders the loading branch with aria-live="polite" and aria-busy when status is "loading"', () => {
-    const state: TodoState = { status: 'loading', todos: [] };
+    const state: TodoState = { status: 'loading', todos: [], toast: null };
     render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const region = screen.getByTestId('todo-list-loading');
     expect(region).toHaveAttribute('aria-live', 'polite');
@@ -42,7 +42,7 @@ describe('<TodoList />', () => {
   });
 
   it('renders the loading branch when status is "idle" (pre-mount window)', () => {
-    const state: TodoState = { status: 'idle', todos: [] };
+    const state: TodoState = { status: 'idle', todos: [], toast: null };
     render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByTestId('todo-list-loading')).toHaveAttribute(
       'data-status',
@@ -51,7 +51,7 @@ describe('<TodoList />', () => {
   });
 
   it('renders the empty-state with semantic <p> when status is "success" and todos is empty', () => {
-    const state: TodoState = { status: 'success', todos: [] };
+    const state: TodoState = { status: 'success', todos: [], toast: null };
     render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const empty = screen.getByTestId('todo-list-empty');
     expect(empty.tagName).toBe('P');
@@ -59,7 +59,11 @@ describe('<TodoList />', () => {
   });
 
   it('renders a <ul> of <TodoItem>s, one per todo, with stable keys', () => {
-    const state: TodoState = { status: 'success', todos: [todoA, todoB] };
+    const state: TodoState = {
+      status: 'success',
+      todos: [todoA, todoB],
+      toast: null,
+    };
     render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const list = screen.getByTestId('todo-list');
     expect(list.tagName).toBe('UL');
@@ -77,6 +81,7 @@ describe('<TodoList />', () => {
       todos: [],
       error: 'Service unavailable',
       requestId: 'corr-abc',
+      toast: null,
     };
     render(<TodoList state={state} onToggle={vi.fn()} onDelete={vi.fn()} />);
     const err = screen.getByTestId('todo-list-error');

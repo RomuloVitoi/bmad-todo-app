@@ -24,29 +24,47 @@ export class ApiError extends Error {
 
   static async fromResponse(response: Response): Promise<ApiError> {
     const requestId = response.headers.get('x-request-id') ?? undefined;
-    let body: unknown;
+    const message = messageForStatus(response.status);
+    // `code` is diagnostic-only (never shown to the user) — kept from the
+    // server envelope when present, e.g. for future log correlation.
+    let code: string | undefined;
     try {
-      body = await response.json();
+      const body: unknown = await response.json();
+      const parsed = ErrorResponseSchema.safeParse(body);
+      if (parsed.success) code = parsed.data.code;
     } catch {
-      return new ApiError({
-        statusCode: response.status,
-        message: `Request failed with status ${response.status}`,
-        requestId,
-      });
-    }
-    const parsed = ErrorResponseSchema.safeParse(body);
-    if (parsed.success) {
-      return new ApiError({
-        statusCode: parsed.data.statusCode,
-        message: parsed.data.message,
-        requestId,
-        code: parsed.data.code,
-      });
+      // No JSON body, or it didn't match the envelope shape. `.message` is
+      // already status-derived above — this catch only affects `code`.
     }
     return new ApiError({
       statusCode: response.status,
-      message: `Request failed with status ${response.status}`,
+      message,
       requestId,
+      code,
     });
+  }
+
+  // No HTTP response was ever received (fetch() itself rejected — DNS
+  // failure, offline, connection refused). Distinct from fromResponse,
+  // which requires a Response object. `statusCode: 0` is the sentinel for
+  // "no response."
+  static networkFailure(): ApiError {
+    return new ApiError({
+      statusCode: 0,
+      message: "You're offline. Your change wasn't saved.",
+    });
+  }
+}
+
+function messageForStatus(statusCode: number): string {
+  switch (statusCode) {
+    case 400:
+      return "That change couldn't be saved.";
+    case 404:
+      return 'This todo no longer exists.';
+    case 429:
+      return 'Too many requests — please wait a moment.';
+    default:
+      return 'Something went wrong. Please try again.';
   }
 }

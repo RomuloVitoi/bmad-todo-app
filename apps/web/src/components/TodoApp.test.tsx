@@ -329,3 +329,224 @@ describe('<TodoApp /> delete journey', () => {
     await screen.findByTestId('todo-list-empty');
   });
 });
+
+describe('<TodoApp /> mutation-failure toasts', () => {
+  const seed = {
+    id: '11111111-1111-4111-8111-111111111111',
+    text: 'pick up milk',
+    completed: false,
+    createdAt: '2026-04-29T00:00:00.000Z',
+  };
+
+  it('add-failure shows the mapped (not raw) message in the Toast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/add a todo/i), 'fail me{Enter}');
+
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('toggle-failure shows the mapped (not raw) message in the Toast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: seed.text });
+    const user = userEvent.setup();
+    await user.click(checkbox);
+
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('delete-failure shows the mapped (not raw) message in the Toast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: /^delete: pick up milk$/i,
+    });
+    const user = userEvent.setup();
+    await user.click(deleteBtn);
+
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('single-toast model: a second failure with a different status replaces the first message', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 400, error: 'Bad Request', message: 'bad' },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 404, error: 'Not Found', message: 'gone' },
+          { status: 404 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(/add a todo/i);
+
+    await user.type(input, 'first{Enter}');
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      "That change couldn't be saved.",
+    );
+
+    await user.type(input, 'second{Enter}');
+    await waitFor(() =>
+      expect(screen.getByTestId('toast-description')).toHaveTextContent(
+        'This todo no longer exists.',
+      ),
+    );
+  });
+
+  it('a successful mutation does not dismiss an already-displayed failure Toast', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            text: 'succeed',
+            completed: false,
+            createdAt: '2026-04-29T00:00:00.000Z',
+          },
+          { status: 201 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(/add a todo/i);
+
+    await user.type(input, 'fail me{Enter}');
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+
+    await user.type(input, 'succeed{Enter}');
+    await screen.findByText('succeed');
+    expect(screen.getByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('Toast text contains no raw server envelope (no status digits, no raw server message)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 503, error: 'Service Unavailable', message: 'oops' },
+          { status: 503 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/add a todo/i), 'fail me{Enter}');
+
+    const toast = await screen.findByTestId('toast-description');
+    expect(toast.textContent).not.toMatch(/\d{3}/);
+    expect(toast.textContent).not.toMatch(/oops/i);
+    expect(toast.textContent).not.toMatch(/https?:\/\//i);
+  });
+
+  it('logs requestId/statusCode at console.debug level only; never renders requestId in the Toast', async () => {
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          {
+            status: 500,
+            headers: { 'x-request-id': 'srv-debug-correlation-id' },
+          },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/add a todo/i), 'fail me{Enter}');
+
+    const toast = await screen.findByTestId('toast-description');
+    await waitFor(() =>
+      expect(debugSpy).toHaveBeenCalledWith(
+        'mutation failed',
+        expect.objectContaining({ requestId: 'srv-debug-correlation-id' }),
+      ),
+    );
+    expect(toast.textContent).not.toMatch(/srv-debug-correlation-id/);
+  });
+});

@@ -58,16 +58,21 @@ export async function createTodo(
   signal?: AbortSignal,
 ): Promise<Todo> {
   const requestId = newRequestId();
-  const response = await fetch(`${API_URL}/todos`, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'x-request-id': requestId,
-    },
-    body: JSON.stringify({ text }),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/todos`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+  } catch {
+    throw ApiError.networkFailure();
+  }
 
   if (!response.ok) {
     throw await ApiError.fromResponse(response);
@@ -103,16 +108,21 @@ export async function updateTodo(
   signal?: AbortSignal,
 ): Promise<Todo> {
   const requestId = newRequestId();
-  const response = await fetch(`${API_URL}/todos/${id}`, {
-    method: 'PATCH',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'x-request-id': requestId,
-    },
-    body: JSON.stringify({ completed }),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/todos/${id}`, {
+      method: 'PATCH',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
+      body: JSON.stringify({ completed }),
+      signal,
+    });
+  } catch {
+    throw ApiError.networkFailure();
+  }
 
   if (!response.ok) {
     throw await ApiError.fromResponse(response);
@@ -147,14 +157,19 @@ export async function deleteTodo(
   signal?: AbortSignal,
 ): Promise<void> {
   const requestId = newRequestId();
-  const response = await fetch(`${API_URL}/todos/${id}`, {
-    method: 'DELETE',
-    headers: {
-      accept: 'application/json',
-      'x-request-id': requestId,
-    },
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/todos/${id}`, {
+      method: 'DELETE',
+      headers: {
+        accept: 'application/json',
+        'x-request-id': requestId,
+      },
+      signal,
+    });
+  } catch {
+    throw ApiError.networkFailure();
+  }
 
   if (!response.ok) {
     throw await ApiError.fromResponse(response);

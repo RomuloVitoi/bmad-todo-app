@@ -3,15 +3,15 @@ import type { Todo } from '@todo-app/shared';
 import { initialState, reducer, type TodoAction, type TodoEntry, type TodoState } from './reducer';
 
 describe('initialState', () => {
-  it('is { status: "idle", todos: [] }', () => {
-    expect(initialState).toEqual({ status: 'idle', todos: [] });
+  it('is { status: "idle", todos: [], toast: null }', () => {
+    expect(initialState).toEqual({ status: 'idle', todos: [], toast: null });
   });
 });
 
 describe('reducer', () => {
   it('idle → loadStart → loading with empty todos', () => {
     const next = reducer(initialState, { type: 'loadStart' });
-    expect(next).toEqual({ status: 'loading', todos: [] });
+    expect(next).toEqual({ status: 'loading', todos: [], toast: null });
   });
 
   it('loading → loadSuccess → success with payload', () => {
@@ -22,15 +22,15 @@ describe('reducer', () => {
       createdAt: '2026-04-29T00:00:00.000Z',
     };
     const next = reducer(
-      { status: 'loading', todos: [] },
+      { status: 'loading', todos: [], toast: null },
       { type: 'loadSuccess', payload: [todo] },
     );
-    expect(next).toEqual({ status: 'success', todos: [todo] });
+    expect(next).toEqual({ status: 'success', todos: [todo], toast: null });
   });
 
   it('loading → loadError → error with message and optional requestId', () => {
     const next = reducer(
-      { status: 'loading', todos: [] },
+      { status: 'loading', todos: [], toast: null },
       {
         type: 'loadError',
         payload: { error: 'Service unavailable', requestId: 'corr-abc' },
@@ -41,6 +41,7 @@ describe('reducer', () => {
       todos: [],
       error: 'Service unavailable',
       requestId: 'corr-abc',
+      toast: null,
     });
   });
 
@@ -53,7 +54,7 @@ describe('reducer', () => {
   });
 
   it('returns the original state for an unrecognized action (defensive runtime fallback)', () => {
-    const state = { status: 'success' as const, todos: [] };
+    const state = { status: 'success' as const, todos: [], toast: null };
     const next = reducer(state, { type: 'bogus' } as unknown as TodoAction);
     expect(next).toBe(state);
   });
@@ -71,7 +72,11 @@ const todo = (over: Partial<Todo> = {}): Todo => ({
   ...over,
 });
 
-const successState = (todos: TodoEntry[]): TodoState => ({ status: 'success', todos });
+const successState = (todos: TodoEntry[]): TodoState => ({
+  status: 'success',
+  todos,
+  toast: null,
+});
 
 describe('reducer (optimistic mutations)', () => {
   describe('addOptimistic', () => {
@@ -104,7 +109,7 @@ describe('reducer (optimistic mutations)', () => {
     });
 
     it('is a no-op when state.status is not success (returns same reference)', () => {
-      const loading: TodoState = { status: 'loading', todos: [] };
+      const loading: TodoState = { status: 'loading', todos: [], toast: null };
       const next = reducer(loading, {
         type: 'addOptimistic',
         payload: { tempId: 't-1', text: 'milk', createdAt: '2026-04-29T12:00:00.000Z' },
@@ -305,7 +310,7 @@ describe('reducer (optimistic mutations)', () => {
     it.each(['idle', 'loading', 'error'] as const)(
       'all seven optimistic actions are no-ops when status === "%s" (return same reference)',
       (status) => {
-        const state: TodoState = { status, todos: [] };
+        const state: TodoState = { status, todos: [], toast: null };
         const actions: TodoAction[] = [
           {
             type: 'addOptimistic',
@@ -388,5 +393,111 @@ describe('reducer (optimistic mutations)', () => {
         expect(reducer(state, action)).not.toBe(state);
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 3.1: toast infrastructure
+// ---------------------------------------------------------------------------
+
+describe('reducer (toast slice)', () => {
+  describe('errorShown/errorDismiss', () => {
+    it('errorShown sets state.toast to the given { message, id }', () => {
+      const next = reducer(successState([]), {
+        type: 'errorShown',
+        payload: { message: 'Could not save. Please try again.', id: 't-1' },
+      });
+      expect(next.toast).toEqual({
+        message: 'Could not save. Please try again.',
+        id: 't-1',
+      });
+    });
+
+    it('a second errorShown replaces (not appends to) state.toast', () => {
+      const first = reducer(successState([]), {
+        type: 'errorShown',
+        payload: { message: 'first failure', id: 't-1' },
+      });
+      const second = reducer(first, {
+        type: 'errorShown',
+        payload: { message: 'second failure', id: 't-2' },
+      });
+      expect(second.toast).toEqual({ message: 'second failure', id: 't-2' });
+    });
+
+    it('errorDismiss sets state.toast to null', () => {
+      const withToast = reducer(successState([]), {
+        type: 'errorShown',
+        payload: { message: 'boom', id: 't-1' },
+      });
+      const next = reducer(withToast, { type: 'errorDismiss' });
+      expect(next.toast).toBeNull();
+    });
+
+    it('errorDismiss on an already-null toast returns the same state reference', () => {
+      const state = successState([]);
+      const next = reducer(state, { type: 'errorDismiss' });
+      expect(next).toBe(state);
+    });
+
+    // The two new cases deliberately omit the `if (state.status !== 'success')`
+    // guard every optimistic action carries — a toast (mutation failure or the
+    // future global safety net) must be showable in any load status.
+    it('errorShown sets the toast in a non-success status and preserves error/requestId', () => {
+      const errorState: TodoState = {
+        status: 'error',
+        todos: [],
+        error: 'Service unavailable',
+        requestId: 'corr-abc',
+        toast: null,
+      };
+      const next = reducer(errorState, {
+        type: 'errorShown',
+        payload: { message: 'Could not save.', id: 't-1' },
+      });
+      expect(next.toast).toEqual({ message: 'Could not save.', id: 't-1' });
+      expect(next.status).toBe('error');
+      expect(next.error).toBe('Service unavailable');
+      expect(next.requestId).toBe('corr-abc');
+    });
+  });
+
+  it('loadStart preserves a non-null toast unchanged in the result', () => {
+    const withToast: TodoState = {
+      status: 'success',
+      todos: [],
+      toast: { message: 'boom', id: 't-1' },
+    };
+    const next = reducer(withToast, { type: 'loadStart' });
+    expect(next.toast).toEqual({ message: 'boom', id: 't-1' });
+  });
+
+  // loadStart/loadSuccess/loadError all build fresh object literals (they reset
+  // error/requestId) rather than spreading ...state, so each must carry
+  // `toast: state.toast` independently — regress any one and an in-flight toast
+  // silently vanishes on the next refetch.
+  it('loadSuccess preserves a non-null toast unchanged in the result', () => {
+    const withToast: TodoState = {
+      status: 'loading',
+      todos: [],
+      toast: { message: 'boom', id: 't-1' },
+    };
+    const next = reducer(withToast, { type: 'loadSuccess', payload: [] });
+    expect(next.status).toBe('success');
+    expect(next.toast).toEqual({ message: 'boom', id: 't-1' });
+  });
+
+  it('loadError preserves a non-null toast unchanged in the result', () => {
+    const withToast: TodoState = {
+      status: 'loading',
+      todos: [],
+      toast: { message: 'boom', id: 't-1' },
+    };
+    const next = reducer(withToast, {
+      type: 'loadError',
+      payload: { error: 'Service unavailable', requestId: 'corr-abc' },
+    });
+    expect(next.status).toBe('error');
+    expect(next.toast).toEqual({ message: 'boom', id: 't-1' });
   });
 });
