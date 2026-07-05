@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -662,5 +663,143 @@ describe('<TodoApp /> initial-load retry journey', () => {
     await screen.findByTestId('todo-list-error');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByTestId('toast-root')).not.toBeInTheDocument();
+  });
+});
+
+describe('<TodoApp /> global safety net', () => {
+  it('unhandled promise rejection surfaces the generic Toast and logs via console.error', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ todos: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+    await screen.findByTestId('todo-list-empty');
+
+    const reason = new Error('boom');
+    const rejected = Promise.reject(reason);
+    rejected.catch(() => {}); // pre-handle so the real Node runtime never sees this as unhandled
+    const event = new PromiseRejectionEvent('unhandledrejection', {
+      promise: rejected,
+      reason,
+    });
+    window.dispatchEvent(event);
+
+    const toast = await screen.findByTestId('toast-root');
+    expect(toast).toHaveTextContent('Something went wrong. Please try again.');
+    expect(errorSpy).toHaveBeenCalledWith('[safety-net] unhandled rejection', reason);
+  });
+
+  it('uncaught error event surfaces the same generic Toast', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ todos: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+    await screen.findByTestId('todo-list-empty');
+
+    const error = new Error('kaboom');
+    const event = new ErrorEvent('error', { error, message: error.message });
+    window.dispatchEvent(event);
+
+    const toast = await screen.findByTestId('toast-root');
+    expect(toast).toHaveTextContent('Something went wrong. Please try again.');
+    expect(errorSpy).toHaveBeenCalledWith('[safety-net] uncaught error', error);
+  });
+
+  it('unmount removes both the unhandledrejection and error listeners', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ todos: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    const { default: TodoApp } = await import('./TodoApp');
+    const { unmount } = render(<TodoApp />);
+    await screen.findByTestId('todo-list-empty');
+
+    const rejectionHandler = addSpy.mock.calls.find(([type]) => type === 'unhandledrejection')?.[1];
+    const errorHandler = addSpy.mock.calls.find(([type]) => type === 'error')?.[1];
+    expect(rejectionHandler).toBeDefined();
+    expect(errorHandler).toBeDefined();
+
+    unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('unhandledrejection', rejectionHandler);
+    expect(removeSpy).toHaveBeenCalledWith('error', errorHandler);
+  });
+
+  it('a caught mutation failure does not trigger the safety net', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse({ statusCode: 500, error: 'Internal Server Error', message: 'oops' }, { status: 500 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+    await screen.findByTestId('todo-list-empty');
+
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox'), 'buy milk{Enter}');
+
+    const toast = await screen.findByTestId('toast-root');
+    expect(toast).toHaveTextContent('Something went wrong. Please try again.');
+    expect(errorSpy).not.toHaveBeenCalledWith('[safety-net] unhandled rejection', expect.anything());
+    expect(errorSpy).not.toHaveBeenCalledWith('[safety-net] uncaught error', expect.anything());
+  });
+
+  it('StrictMode double-mount registers listeners exactly once effectively (no duplicate Toasts)', async () => {
+    // StrictMode double-invokes the pre-existing mount-load effect (out of
+    // scope for this story), firing a second, superseded `getTodos()` call.
+    // A fresh Response per call (rather than `mockResolvedValueOnce`) keeps
+    // that extra call from starving on an empty mock queue.
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(jsonResponse({ todos: [] })));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(
+      <StrictMode>
+        <TodoApp />
+      </StrictMode>,
+    );
+    await screen.findByTestId('todo-list-empty');
+
+    const reason = new Error('boom');
+    const rejected = Promise.reject(reason);
+    rejected.catch(() => {});
+    window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', { promise: rejected, reason }));
+
+    const toasts = await screen.findAllByTestId('toast-root');
+    expect(toasts).toHaveLength(1);
+  });
+
+  it('ignores benign browser noise (ResizeObserver loop, opaque cross-origin) but still surfaces genuine errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ todos: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+    await screen.findByTestId('todo-list-empty');
+
+    // Benign ResizeObserver loop notification (Chrome dispatches this as a window error).
+    window.dispatchEvent(
+      new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications.' }),
+    );
+    // Opaque cross-origin error: no error object, no filename, generic message.
+    window.dispatchEvent(new ErrorEvent('error', { message: 'Script error.' }));
+    // A genuine app error must still get through.
+    const error = new Error('real');
+    window.dispatchEvent(new ErrorEvent('error', { error, message: error.message, filename: 'app.js' }));
+
+    const toasts = await screen.findAllByTestId('toast-root');
+    expect(toasts).toHaveLength(1);
   });
 });

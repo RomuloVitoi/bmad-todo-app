@@ -64,6 +64,48 @@ export default function TodoApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent): void => {
+      console.error('[safety-net] unhandled rejection', event.reason);
+      event.preventDefault();
+      dispatch({
+        type: 'errorShown',
+        payload: {
+          message: 'Something went wrong. Please try again.',
+          id: crypto.randomUUID(),
+        },
+      });
+    };
+
+    const handleError = (event: ErrorEvent): void => {
+      // Ignore browser noise the app didn't cause and the user can't act on:
+      // opaque cross-origin errors (no error object, no filename, generic
+      // "Script error." message) and benign ResizeObserver loop notifications.
+      const isCrossOriginOpaque = event.error == null && !event.filename;
+      const isBenignResizeObserver =
+        typeof event.message === 'string' && event.message.includes('ResizeObserver loop');
+      if (isCrossOriginOpaque || isBenignResizeObserver) {
+        return;
+      }
+      console.error('[safety-net] uncaught error', event.error ?? event.message);
+      event.preventDefault();
+      dispatch({
+        type: 'errorShown',
+        payload: {
+          message: 'Something went wrong. Please try again.',
+          id: crypto.randomUUID(),
+        },
+      });
+    };
+
+    window.addEventListener('unhandledrejection', handleRejection);
+    window.addEventListener('error', handleError);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleRejection);
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
+
   const handleRetry = useCallback((): void => {
     dispatch({ type: 'loadStart' });
     getTodos().then(

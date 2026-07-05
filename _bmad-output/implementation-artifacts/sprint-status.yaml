@@ -35,7 +35,12 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-07-05 # 3-4 ready-for-dev → in-progress → review → done
+last_updated: 2026-07-05 # 3-5 ready-for-dev → in-progress → review → done
+# 2026-07-05: 3-5 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 6/6 ACs PASS + all guardrails/out-of-scope prohibitions upheld, no scope creep; 3 decision-needed resolved (1 patch applied — handleError now guards benign/opaque cross-origin + ResizeObserver-loop noise before dispatching, +1 regression test; 1 deferred — crypto.randomUUID() non-secure-context self-feeding loop, app-wide secure-context dependency makes it unreachable; 1 kept-as-is — preventDefault on both handlers per spec's open judgment call), 0 patches remaining, 2 defers logged to deferred-work.md (error-flood toast-timer reset; React render-phase errors uncaught — error-boundary out of scope), 2 dismissed; lint/typecheck clean; web tests 147 → 148; zero reducer/dependency changes)
+# 2026-07-05: 3-5 in-progress → review (Dev-Story: new third useEffect in TodoApp registers window unhandledrejection/error listeners dispatching errorShown with a hardcoded generic message + crypto.randomUUID(); lint/typecheck clean; web tests 142 → 147; 5 new tests incl. StrictMode double-mount + AC #4 mutation-non-interference regression guard; one test-only deviation — StrictMode test's fetchMock uses mockImplementation instead of mockResolvedValueOnce to tolerate the pre-existing mount effect's StrictMode double-invoke; zero reducer/dependency changes; no spec deviations in production code)
+# 2026-07-05: 3-5 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-07-05: 3-5 backlog → ready-for-dev (Create-Story: new, separate `useEffect` in TodoApp registering window `unhandledrejection`/`error` listeners that dispatch the existing errorShown action with a hardcoded generic message; explicitly out of scope: a React error-boundary component (architecture.md's "global error boundary" checklist phrase is not a separate requirement — epics.md's ACs are window-listener-only); zero reducer changes, zero new deps)
+# 2026-07-05: 3-4 ready-for-dev → in-progress → review → done
 # 2026-07-05: 3-4 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 7/7 ACs PASS + all 7 architectural guardrails/out-of-scope prohibitions upheld, no scope creep; 0 decision-needed remaining, 0 patches, 1 defer logged to deferred-work.md (handleRetry vs onVisibility refetch race — accepted per spec's no-AbortSignal guardrail, spec's "no equivalent race" rationale noted as incomplete), 9 dismissed; zero reducer/dependency changes)
 # 2026-07-05: 3-4 in-progress → review (Dev-Story: TodoList error branch replaced with heading + subtext + Retry button, new onRetry prop; TodoApp gained handleRetry (no AbortSignal, no shared helper with mount effect); lint/typecheck clean; web tests 137 → 142; zero reducer/dependency changes; no spec deviations)
 # 2026-07-05: 3-4 ready-for-dev → in-progress (Dev-Story: starting implementation)
@@ -138,6 +143,6 @@ development_status:
   3-2-mutation-failure-toasts-with-user-facing-error-messages: done
   3-3-preserve-todoinput-text-on-add-failure-fr19: done
   3-4-initial-load-error-recovery-with-retry-button-fr20: done
-  3-5-global-unhandled-rejection-and-error-safety-net-nfr9: backlog
+  3-5-global-unhandled-rejection-and-error-safety-net-nfr9: done
   3-6-journey-level-resilience-tests-for-the-three-prd-user-journeys: backlog
   epic-3-retrospective: optional
