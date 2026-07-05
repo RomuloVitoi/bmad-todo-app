@@ -64,6 +64,23 @@ export default function TodoApp() {
     };
   }, []);
 
+  const handleRetry = useCallback((): void => {
+    dispatch({ type: 'loadStart' });
+    getTodos().then(
+      (todos) => {
+        dispatch({ type: 'loadSuccess', payload: todos });
+      },
+      (err: unknown) => {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : 'Could not load todos. Please try again.';
+        const requestId = err instanceof ApiError ? err.requestId : undefined;
+        dispatch({ type: 'loadError', payload: { error: message, requestId } });
+      },
+    );
+  }, []);
+
   const handleAdd = useCallback((text: string): string => {
     const tempId = crypto.randomUUID();
     const createdAt = new Date().toISOString();
@@ -199,6 +216,7 @@ export default function TodoApp() {
           state={state}
           onToggle={handleToggle}
           onDelete={handleDelete}
+          onRetry={handleRetry}
         />
       </section>
       <Toast

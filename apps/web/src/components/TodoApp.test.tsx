@@ -615,3 +615,52 @@ describe('<TodoApp /> mutation-failure toasts', () => {
     expect(toast.textContent).not.toMatch(/srv-debug-correlation-id/);
   });
 });
+
+describe('<TodoApp /> initial-load retry journey', () => {
+  it('retry after initial-load failure: click Retry → loading → success', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      )
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-error');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /retry/i }));
+
+    await screen.findByTestId('todo-list-empty');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retry after initial-load failure: click Retry → fails again → error UI reappears, no Toast', async () => {
+    const errorResponse = () =>
+      jsonResponse(
+        { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+        { status: 500 },
+      );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(errorResponse())
+      .mockResolvedValueOnce(errorResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-error');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /retry/i }));
+
+    await screen.findByTestId('todo-list-error');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('toast-root')).not.toBeInTheDocument();
+  });
+});

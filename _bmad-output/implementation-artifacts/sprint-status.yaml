@@ -35,7 +35,11 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-07-05 # 3-3 review → done
+last_updated: 2026-07-05 # 3-4 ready-for-dev → in-progress → review → done
+# 2026-07-05: 3-4 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 7/7 ACs PASS + all 7 architectural guardrails/out-of-scope prohibitions upheld, no scope creep; 0 decision-needed remaining, 0 patches, 1 defer logged to deferred-work.md (handleRetry vs onVisibility refetch race — accepted per spec's no-AbortSignal guardrail, spec's "no equivalent race" rationale noted as incomplete), 9 dismissed; zero reducer/dependency changes)
+# 2026-07-05: 3-4 in-progress → review (Dev-Story: TodoList error branch replaced with heading + subtext + Retry button, new onRetry prop; TodoApp gained handleRetry (no AbortSignal, no shared helper with mount effect); lint/typecheck clean; web tests 137 → 142; zero reducer/dependency changes; no spec deviations)
+# 2026-07-05: 3-4 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-07-05: 3-4 backlog → ready-for-dev (Create-Story: replaces TodoList's Epic-1 error placeholder with a heading + subtext + Retry button; new handleRetry callback in TodoApp dispatching the existing loadStart action + calling getTodos(), no AbortSignal/shared-helper with the mount effect; zero reducer changes, zero new deps; test coverage split TodoList.test.tsx (presentational) / TodoApp.test.tsx (state-transition), following Story 3.3's precedent; independently validated against checklist.md with zero confirmed defects)
 # 2026-07-05: 3-3 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 6/6 ACs PASS + all 6 guardrails honored + zero scope creep; 1 decision-needed → resolved as patch (restore effect now guards on empty input via functional updater so a fresh draft typed after submit is never clobbered + regression test), 0 remaining patches, 3 defers logged to deferred-work.md (concurrent double-failure drops earlier text — spec-accepted; failedAdd never reset / relies on UUID uniqueness — spec forbade fix; untrimmed-whitespace round-trip — pre-existing from 2.5), 3 dismissed; lint/typecheck clean; web tests 136 → 137)
 # 2026-07-05: 3-3 in-progress → review (Dev-Story: handleAdd returns tempId; TodoApp tracks local failedAdd state; TodoInput restores its value via a lastTempIdRef-matched useEffect without stealing focus; lint/typecheck clean; web tests 131 → 136; zero reducer/errors/api changes; no spec deviations)
 # 2026-07-05: 3-3 ready-for-dev → in-progress (Dev-Story: starting implementation)
@@ -133,7 +137,7 @@ development_status:
   3-1-toast-infrastructure-radix-toast-reducer-slice: done
   3-2-mutation-failure-toasts-with-user-facing-error-messages: done
   3-3-preserve-todoinput-text-on-add-failure-fr19: done
-  3-4-initial-load-error-recovery-with-retry-button-fr20: backlog
+  3-4-initial-load-error-recovery-with-retry-button-fr20: done
   3-5-global-unhandled-rejection-and-error-safety-net-nfr9: backlog
   3-6-journey-level-resilience-tests-for-the-three-prd-user-journeys: backlog
   epic-3-retrospective: optional

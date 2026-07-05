@@ -5,10 +5,16 @@ export interface TodoListProps {
   state: TodoState;
   onToggle: (id: string, nextCompleted: boolean) => void;
   onDelete: (id: string) => void;
+  onRetry: () => void;
 }
 
-export default function TodoList({ state, onToggle, onDelete }: TodoListProps) {
-  const { status, todos } = state;
+export default function TodoList({
+  state,
+  onToggle,
+  onDelete,
+  onRetry,
+}: TodoListProps) {
+  const { status, todos, error } = state;
 
   if (status === 'idle' || status === 'loading') {
     return (
@@ -25,17 +31,26 @@ export default function TodoList({ state, onToggle, onDelete }: TodoListProps) {
   }
 
   if (status === 'error') {
-    // EPIC 1 PLACEHOLDER — Story 3.1 replaces this with the Radix Toast-based
-    // error system; the minimal text here keeps the page functional without
-    // pre-empting Epic 3's UX choices.
     return (
       <div
         data-testid="todo-list-error"
         data-status="error"
         role="alert"
-        className="rounded-md border border-current/10 px-4 py-8 text-center text-sm opacity-70"
+        className="flex flex-col items-center gap-3 rounded-md border border-current/10 px-4 py-8 text-center text-sm"
       >
-        Failed to load todos.
+        <p className="font-medium">{"Couldn't load todos"}</p>
+        {error !== undefined && (
+          <p data-testid="todo-list-error-detail" className="opacity-70">
+            {error}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-1 inline-flex h-11 items-center justify-center rounded-md border border-current/10 px-4 text-sm font-medium outline-none hover:bg-current/5 focus-visible:ring-2 focus-visible:ring-current/40"
+        >
+          Retry
+        </button>
       </div>
     );
   }
