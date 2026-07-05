@@ -803,3 +803,342 @@ describe('<TodoApp /> global safety net', () => {
     expect(toasts).toHaveLength(1);
   });
 });
+
+describe('<TodoApp /> Journey 1 — First-Time Use', () => {
+  it('Journey 1: load → empty → add → optimistic → reconciled, with no console errors', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            text: 'pick up dry cleaning',
+            completed: false,
+            createdAt: '2026-04-29T00:00:00.000Z',
+          },
+          { status: 201 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    expect(screen.getByTestId('todo-list-loading')).toBeInTheDocument();
+    await screen.findByTestId('todo-list-empty');
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByLabelText(/add a todo/i),
+      'pick up dry cleaning{Enter}',
+    );
+
+    const list = await screen.findByTestId('todo-list');
+    expect(within(list).getByText('pick up dry cleaning')).toBeInTheDocument();
+
+    // Reconciled: still one item, same text, no duplicate optimistic/server pair.
+    const items = await within(list).findAllByTestId('todo-item');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('pick up dry cleaning');
+
+    // The POST round-trip actually fired (GET + POST) — length 1 alone would
+    // pass on the optimistic entry even if reconciliation never happened.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('<TodoApp /> Journey 2 — Returning Session', () => {
+  it('Journey 2: seeded mixed list renders correct visual state; delete completed; toggle active to completed', async () => {
+    const active = {
+      id: '44444444-4444-4444-8444-444444444444',
+      text: 'clean coffee machine',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    const completedTodo = {
+      id: '55555555-5555-4555-8555-555555555555',
+      text: 'stale completed item',
+      completed: true,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [active, completedTodo] }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 })) // DELETE
+      .mockResolvedValueOnce(
+        jsonResponse({ ...active, completed: true }, { status: 200 }), // PATCH
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const list = await screen.findByTestId('todo-list');
+    const activeItem = within(list)
+      .getByText(active.text)
+      .closest('[data-testid="todo-item"]') as HTMLElement;
+    const completedItem = within(list)
+      .getByText(completedTodo.text)
+      .closest('[data-testid="todo-item"]') as HTMLElement;
+
+    expect(within(activeItem).getByTestId('todo-item-text')).not.toHaveClass(
+      'line-through',
+    );
+    expect(within(activeItem).getByRole('checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(within(completedItem).getByTestId('todo-item-text')).toHaveClass(
+      'line-through',
+    );
+    expect(within(completedItem).getByRole('checkbox')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+
+    const user = userEvent.setup();
+    await user.click(
+      within(completedItem).getByRole('button', {
+        name: `Delete: ${completedTodo.text}`,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(completedTodo.text)).not.toBeInTheDocument(),
+    );
+    const deleteCall = fetchMock.mock.calls[1]!;
+    expect(deleteCall[0]).toBe(
+      `http://localhost:4000/todos/${completedTodo.id}`,
+    );
+    expect(deleteCall[1]).toMatchObject({ method: 'DELETE' });
+
+    await user.click(within(activeItem).getByRole('checkbox'));
+    await waitFor(() =>
+      expect(within(activeItem).getByRole('checkbox')).toHaveAttribute(
+        'aria-checked',
+        'true',
+      ),
+    );
+    expect(within(activeItem).getByTestId('todo-item-text')).toHaveClass(
+      'line-through',
+    );
+
+    // The PATCH actually fired (GET + DELETE + PATCH) — the optimistic flip
+    // alone would satisfy the aria-checked/line-through assertions even if
+    // updateTodo were never called or hit the wrong URL/method.
+    const patchCall = fetchMock.mock.calls[2]!;
+    expect(patchCall[0]).toBe(`http://localhost:4000/todos/${active.id}`);
+    expect(patchCall[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ completed: true }),
+    });
+  });
+});
+
+describe('<TodoApp /> Journey 3 — Failure & Recovery', () => {
+  it('Sub-case A+D: offline add fails (input restored, offline toast), then retry succeeds after reconnecting', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            id: '66666666-6666-4666-8666-666666666666',
+            text: 'email landlord',
+            completed: false,
+            createdAt: '2026-04-29T00:00:00.000Z',
+          },
+          { status: 201 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const input = (await screen.findByLabelText(
+      /add a todo/i,
+    )) as HTMLInputElement;
+    const user = userEvent.setup();
+
+    // Sub-case A: offline add.
+    await user.type(input, 'email landlord{Enter}');
+    await screen.findByTestId('todo-list-empty'); // optimistic entry rolled back
+    expect(input.value).toBe('email landlord');
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      "You're offline. Your change wasn't saved.",
+    );
+
+    // Sub-case D: retry with the restored text once connectivity returns.
+    await user.type(input, '{Enter}');
+    const list = await screen.findByTestId('todo-list');
+    await within(list).findByText('email landlord');
+    expect(input.value).toBe('');
+
+    // No duplicate toast — the retry succeeded silently (single-toast model,
+    // the offline message stays until dismissed or replaced by a new failure).
+    expect(screen.getAllByTestId('toast-root')).toHaveLength(1);
+  });
+
+  it('Sub-case B: 500 on toggle reverts the checkbox and shows a generic-error toast', async () => {
+    const seed = {
+      id: '77777777-7777-4777-8777-777777777777',
+      text: 'pick up dry cleaning',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    // Deferred PATCH so the transient optimistic `true` is observable before
+    // the 500 lands — otherwise the start-state (`false`) equals the asserted
+    // end-state and a never-applied optimistic flip would pass silently.
+    let resolveToggle!: (response: Response) => void;
+    const togglePromise = new Promise<Response>((resolve) => {
+      resolveToggle = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [seed] }))
+      .mockReturnValueOnce(togglePromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const checkbox = await screen.findByRole('checkbox', { name: seed.text });
+    const user = userEvent.setup();
+    await user.click(checkbox);
+
+    // Optimistic flip to `true` happens before the PATCH resolves.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: seed.text }),
+      ).toHaveAttribute('aria-checked', 'true'),
+    );
+
+    resolveToggle(
+      jsonResponse(
+        { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+        { status: 500 },
+      ),
+    );
+
+    // ...then reverts to `false` once the 500 lands.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: seed.text }),
+      ).toHaveAttribute('aria-checked', 'false'),
+    );
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('Sub-case C: 500 on delete re-inserts the item at its original position and shows a toast', async () => {
+    // Three seeded items so "re-inserted at its ORIGINAL position" is actually
+    // testable — deleting the middle one and asserting it returns to index 1
+    // (not appended) is indistinguishable from a broken re-append with a
+    // single-item seed.
+    const first = {
+      id: '88888888-8888-4888-8888-888888888881',
+      text: 'first task',
+      completed: false,
+      createdAt: '2026-04-29T00:00:00.000Z',
+    };
+    const middle = {
+      id: '88888888-8888-4888-8888-888888888882',
+      text: 'middle task',
+      completed: false,
+      createdAt: '2026-04-29T00:00:01.000Z',
+    };
+    const last = {
+      id: '88888888-8888-4888-8888-888888888883',
+      text: 'last task',
+      completed: false,
+      createdAt: '2026-04-29T00:00:02.000Z',
+    };
+    let resolveDelete!: (response: Response) => void;
+    const deletePromise = new Promise<Response>((resolve) => {
+      resolveDelete = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [first, middle, last] }))
+      .mockReturnValueOnce(deletePromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    const deleteBtn = await screen.findByRole('button', {
+      name: `Delete: ${middle.text}`,
+    });
+    const user = userEvent.setup();
+    await user.click(deleteBtn);
+
+    // Optimistic removal: the middle row disappears, leaving first + last.
+    await waitFor(() =>
+      expect(screen.queryByText(middle.text)).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('todo-item')).toHaveLength(2);
+
+    resolveDelete(
+      jsonResponse(
+        { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+        { status: 500 },
+      ),
+    );
+
+    // Re-inserted at its ORIGINAL position (index 1), not appended to the end.
+    // Wait for the middle row to reappear before snapshotting order — the two
+    // surviving rows are already present, so findAllByTestId would otherwise
+    // resolve before the rollback re-render completes.
+    await screen.findByText(middle.text);
+    const items = screen.getAllByTestId('todo-item');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent(first.text);
+    expect(items[1]).toHaveTextContent(middle.text);
+    expect(items[2]).toHaveTextContent(last.text);
+    expect(await screen.findByTestId('toast-description')).toHaveTextContent(
+      'Something went wrong. Please try again.',
+    );
+  });
+
+  it('Sub-case E: initial load fails, user clicks Retry, second call succeeds and the list renders', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+          { status: 500 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          todos: [
+            {
+              id: '99999999-9999-4999-8999-999999999999',
+              text: 'clean coffee machine',
+              completed: false,
+              createdAt: '2026-04-29T00:00:00.000Z',
+            },
+          ],
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-error');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /retry/i }));
+
+    const list = await screen.findByTestId('todo-list');
+    expect(within(list).getByText('clean coffee machine')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
