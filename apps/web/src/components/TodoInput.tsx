@@ -1,25 +1,40 @@
 'use client';
 
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 export interface TodoInputProps {
-  onAdd: (text: string) => void;
+  onAdd: (text: string) => string;
+  failedAdd?: { tempId: string; text: string } | null;
 }
 
-export default function TodoInput({ onAdd }: TodoInputProps) {
+export default function TodoInput({
+  onAdd,
+  failedAdd = null,
+}: TodoInputProps) {
   const [value, setValue] = useState('');
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastTempIdRef = useRef<string | undefined>(undefined);
 
   const isEmpty = value.trim().length === 0;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (value.trim().length === 0) return;
-    onAdd(value);
+    lastTempIdRef.current = onAdd(value);
     setValue('');
     inputRef.current?.focus();
   };
+
+  useEffect(() => {
+    if (failedAdd !== null && failedAdd.tempId === lastTempIdRef.current) {
+      // Only restore into an empty input — never clobber a fresh draft the
+      // user started typing after this submission cleared the field. The
+      // functional updater reads the latest value without adding `value` to
+      // the dependency array (which would re-fire the restore on every keystroke).
+      setValue((current) => (current.trim().length === 0 ? failedAdd.text : current));
+    }
+  }, [failedAdd]);
 
   return (
     <form

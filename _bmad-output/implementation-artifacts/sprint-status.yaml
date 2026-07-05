@@ -35,7 +35,11 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-19
-last_updated: 2026-07-05 # 3-2 review → done
+last_updated: 2026-07-05 # 3-3 review → done
+# 2026-07-05: 3-3 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 6/6 ACs PASS + all 6 guardrails honored + zero scope creep; 1 decision-needed → resolved as patch (restore effect now guards on empty input via functional updater so a fresh draft typed after submit is never clobbered + regression test), 0 remaining patches, 3 defers logged to deferred-work.md (concurrent double-failure drops earlier text — spec-accepted; failedAdd never reset / relies on UUID uniqueness — spec forbade fix; untrimmed-whitespace round-trip — pre-existing from 2.5), 3 dismissed; lint/typecheck clean; web tests 136 → 137)
+# 2026-07-05: 3-3 in-progress → review (Dev-Story: handleAdd returns tempId; TodoApp tracks local failedAdd state; TodoInput restores its value via a lastTempIdRef-matched useEffect without stealing focus; lint/typecheck clean; web tests 131 → 136; zero reducer/errors/api changes; no spec deviations)
+# 2026-07-05: 3-3 ready-for-dev → in-progress (Dev-Story: starting implementation)
+# 2026-07-05: 3-3 backlog → ready-for-dev (Create-Story: TodoInput captures + restores typed text on add failure; correlation via a returned tempId + local failedAdd React state in TodoApp matched against a per-TodoInput-instance ref; zero reducer changes; ~110 LOC across 4 files, 0 new deps)
 # 2026-07-05: 3-2 review → done (Code-Review: 3 parallel adversarial layers; Acceptance Auditor 7/7 ACs PASS + all 9 guardrails + all 7 out-of-scope prohibitions honored, no violations/scope creep; 0 decision-needed, 0 patches, 3 defers logged to deferred-work.md — all spec-ratified: AbortError carve-out for future signal-passing story, contract-drift raw-message leak (per "Known gap, explicitly deferred"), TodoApp-level network-failure toast test gap; 5 dismissed)
 # 2026-07-05: 3-2 in-progress → review (Dev-Story: ApiError status-code → human-message mapping + networkFailure() factory; createTodo/updateTodo/deleteTodo wrap network failures; TodoApp dispatches errorShown on all 3 mutation failure paths with debug-only requestId logging; lint/typecheck clean; web tests 108 → 131; no spec deviations)
 # 2026-07-05: 3-2 ready-for-dev → in-progress (Dev-Story: starting implementation)
@@ -128,7 +132,7 @@ development_status:
   3-0-playwright-e2e-harness: done
   3-1-toast-infrastructure-radix-toast-reducer-slice: done
   3-2-mutation-failure-toasts-with-user-facing-error-messages: done
-  3-3-preserve-todoinput-text-on-add-failure-fr19: backlog
+  3-3-preserve-todoinput-text-on-add-failure-fr19: done
   3-4-initial-load-error-recovery-with-retry-button-fr20: backlog
   3-5-global-unhandled-rejection-and-error-safety-net-nfr9: backlog
   3-6-journey-level-resilience-tests-for-the-three-prd-user-journeys: backlog

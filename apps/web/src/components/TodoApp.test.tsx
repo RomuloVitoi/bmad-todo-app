@@ -103,6 +103,71 @@ describe('<TodoApp /> create journey', () => {
 
     await screen.findByTestId('todo-list-empty');
     expect(screen.queryByText('fail me')).not.toBeInTheDocument();
+
+    // FR19: the typed text re-appears in the input after the rollback.
+    expect((input as HTMLInputElement).value).toBe('fail me');
+  });
+
+  it('preserves in-flight input when an earlier submission fails after a later one succeeds', async () => {
+    let resolveA!: (response: Response) => void;
+    let resolveB!: (response: Response) => void;
+    const postA = new Promise<Response>((resolve) => {
+      resolveA = resolve;
+    });
+    const postB = new Promise<Response>((resolve) => {
+      resolveB = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ todos: [] }))
+      .mockReturnValueOnce(postA)
+      .mockReturnValueOnce(postB);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: TodoApp } = await import('./TodoApp');
+    render(<TodoApp />);
+
+    await screen.findByTestId('todo-list-empty');
+    const input = (await screen.findByLabelText(
+      /add a todo/i,
+    )) as HTMLInputElement;
+
+    const user = userEvent.setup();
+    await user.type(input, 'A{Enter}');
+    await user.type(input, 'B{Enter}');
+
+    const list = await screen.findByTestId('todo-list');
+    expect(within(list).getByText('A')).toBeInTheDocument();
+    expect(within(list).getByText('B')).toBeInTheDocument();
+
+    // B (the later submission) succeeds first.
+    resolveB(
+      jsonResponse(
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          text: 'B',
+          completed: false,
+          createdAt: '2026-04-29T00:00:00.000Z',
+        },
+        { status: 201 },
+      ),
+    );
+    await within(list).findByText('B');
+
+    // A (the earlier submission) fails afterward — its restoration must
+    // NOT overwrite the input, which currently reflects B's outcome (empty).
+    resolveA(
+      jsonResponse(
+        { statusCode: 500, error: 'Internal Server Error', message: 'oops' },
+        { status: 500 },
+      ),
+    );
+    await waitFor(() => {
+      expect(screen.queryByText('A')).not.toBeInTheDocument();
+    });
+
+    expect(input.value).toBe('');
+    expect(within(list).getByText('B')).toBeInTheDocument();
   });
 
   it('XSS-as-text: literal HTML in todo text renders as text, never as DOM', async () => {

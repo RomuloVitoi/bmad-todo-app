@@ -138,4 +138,112 @@ describe('<TodoInput />', () => {
     expect(form.querySelectorAll('input')).toHaveLength(1);
     expect(form.querySelectorAll('button')).toHaveLength(1);
   });
+
+  it('restores the typed text when a matching failedAdd prop arrives', async () => {
+    const onAdd = vi.fn().mockReturnValue('temp-1');
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TodoInput onAdd={onAdd} failedAdd={null} />,
+    );
+    const input = screen.getByLabelText(/add a todo/i) as HTMLInputElement;
+    await user.type(input, 'buy milk{Enter}');
+    expect(input.value).toBe('');
+
+    rerender(
+      <TodoInput
+        onAdd={onAdd}
+        failedAdd={{ tempId: 'temp-1', text: 'buy milk' }}
+      />,
+    );
+    expect(input.value).toBe('buy milk');
+  });
+
+  it('does NOT restore text from a failedAdd that does not match the last submission', async () => {
+    const onAdd = vi.fn().mockReturnValue('temp-1');
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TodoInput onAdd={onAdd} failedAdd={null} />,
+    );
+    const input = screen.getByLabelText(/add a todo/i) as HTMLInputElement;
+    await user.type(input, 'buy milk{Enter}');
+    expect(input.value).toBe('');
+
+    rerender(
+      <TodoInput
+        onAdd={onAdd}
+        failedAdd={{ tempId: 'temp-2', text: 'ignore me' }}
+      />,
+    );
+    expect(input.value).toBe('');
+  });
+
+  it('begins a fresh submit cycle when the user retries after a restore', async () => {
+    const onAdd = vi.fn().mockReturnValue('temp-1');
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TodoInput onAdd={onAdd} failedAdd={null} />,
+    );
+    const input = screen.getByLabelText(/add a todo/i) as HTMLInputElement;
+    await user.type(input, 'buy milk{Enter}');
+    rerender(
+      <TodoInput
+        onAdd={onAdd}
+        failedAdd={{ tempId: 'temp-1', text: 'buy milk' }}
+      />,
+    );
+    expect(input.value).toBe('buy milk');
+
+    await user.type(input, '{Enter}');
+    expect(onAdd).toHaveBeenCalledTimes(2);
+    expect(onAdd).toHaveBeenNthCalledWith(2, 'buy milk');
+    expect(input.value).toBe('');
+  });
+
+  it('restores text without stealing focus', async () => {
+    const onAdd = vi.fn().mockReturnValue('temp-1');
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TodoInput onAdd={onAdd} failedAdd={null} />,
+    );
+    const input = screen.getByLabelText(/add a todo/i) as HTMLInputElement;
+    await user.type(input, 'buy milk{Enter}');
+    input.blur();
+    expect(input).not.toHaveFocus();
+
+    rerender(
+      <TodoInput
+        onAdd={onAdd}
+        failedAdd={{ tempId: 'temp-1', text: 'buy milk' }}
+      />,
+    );
+    expect(input.value).toBe('buy milk');
+    expect(input).not.toHaveFocus();
+  });
+
+  it('does NOT clobber a fresh draft the user typed after submitting', async () => {
+    const onAdd = vi.fn().mockReturnValue('temp-1');
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TodoInput onAdd={onAdd} failedAdd={null} />,
+    );
+    const input = screen.getByLabelText(/add a todo/i) as HTMLInputElement;
+
+    // Submit "buy milk" — the input clears while the add is in flight.
+    await user.type(input, 'buy milk{Enter}');
+    expect(input.value).toBe('');
+
+    // The user starts a new draft before the earlier add's failure lands.
+    await user.type(input, 'walk the dog');
+    expect(input.value).toBe('walk the dog');
+
+    // The earlier submission (temp-1) now fails. Its tempId still matches the
+    // last submission, but the input is no longer empty — the draft must win.
+    rerender(
+      <TodoInput
+        onAdd={onAdd}
+        failedAdd={{ tempId: 'temp-1', text: 'buy milk' }}
+      />,
+    );
+    expect(input.value).toBe('walk the dog');
+  });
 });

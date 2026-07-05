@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import {
   createTodo,
   deleteTodo,
@@ -15,6 +15,10 @@ import TodoList from './TodoList';
 
 export default function TodoApp() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [failedAdd, setFailedAdd] = useState<{
+    tempId: string;
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -60,7 +64,7 @@ export default function TodoApp() {
     };
   }, []);
 
-  const handleAdd = useCallback((text: string): void => {
+  const handleAdd = useCallback((text: string): string => {
     const tempId = crypto.randomUUID();
     const createdAt = new Date().toISOString();
     dispatch({ type: 'addOptimistic', payload: { tempId, text, createdAt } });
@@ -70,6 +74,7 @@ export default function TodoApp() {
       },
       (err: unknown) => {
         dispatch({ type: 'addFailed', payload: { tempId } });
+        setFailedAdd({ tempId, text });
         const message =
           err instanceof ApiError
             ? err.message
@@ -86,6 +91,7 @@ export default function TodoApp() {
         });
       },
     );
+    return tempId;
   }, []);
 
   const handleToggle = useCallback(
@@ -186,7 +192,9 @@ export default function TodoApp() {
         <h1 id="todos-heading" className="text-3xl font-semibold tracking-tight">
           Shared Todos
         </h1>
-        {state.status === 'success' && <TodoInput onAdd={handleAdd} />}
+        {state.status === 'success' && (
+          <TodoInput onAdd={handleAdd} failedAdd={failedAdd} />
+        )}
         <TodoList
           state={state}
           onToggle={handleToggle}
