@@ -270,6 +270,13 @@ When something goes wrong (offline, server 5xx, timeout), the user sees a clear 
 **FRs covered:** FR18, FR19, FR20, FR21
 **Key NFRs:** NFR7, NFR8, NFR9, NFR24 (enhancement: correlation IDs, structured logging)
 
+### Epic 4: Accessibility Verification
+
+_Added 2026-07-05 via Correct Course (see `sprint-change-proposal-2026-07-05.md`)._ The application's accessibility claims (NFR10–NFR14, FR29–FR33) move from "addressed by design" to "verified by automated tests." Every app state is scanned for WCAG 2.1 AA violations via axe-core, keyboard operability is proven via traversal tests, any violations found are fixed, and the whole suite runs in CI so regressions are caught automatically going forward.
+
+**FRs covered:** FR29, FR30, FR31, FR32 (verification of existing implementation)
+**Key NFRs:** NFR10, NFR11, NFR12, NFR13, NFR14
+
 ## Epic 1: Shared Todo List — Visible, Deployable Read Experience
 
 A visitor opens the app (local or deployed) and immediately sees the shared todo list — empty state, loading state, or populated with items others have created. No gate, no login, no setup. The app is built end-to-end with workspace scaffolding, DB persistence, a documented API, and container deployment — but the user-visible outcome is simply "I can see the list."
@@ -1286,3 +1293,135 @@ So that NFR23's "critical paths including the three documented user journeys" is
 **When** the full test suite runs,
 **Then** every test passes,
 **And** test output is readable (test names describe the journey step being verified).
+
+## Epic 4: Accessibility Verification
+
+_Added 2026-07-05 via Correct Course (see `sprint-change-proposal-2026-07-05.md`)._ The application's accessibility claims (NFR10–NFR14, FR29–FR33) move from "addressed by design" to "verified by automated tests." Every app state is scanned for WCAG 2.1 AA violations via axe-core, keyboard operability is proven via traversal tests, any violations found are fixed, and the whole suite runs in CI so regressions are caught automatically going forward.
+
+### Story 4.1: Automated axe-core WCAG AA scans across app states
+
+As a reviewer of the v1 product for accessibility compliance,
+I want automated axe-core scans against every distinct UI state,
+So that NFR10 (WCAG 2.1 AA) is verified automatically, not just designed for.
+
+**Acceptance Criteria:**
+
+**Given** `apps/web/e2e/accessibility.spec.ts`,
+**When** the file is created,
+**Then** it uses `@axe-core/playwright`'s `AxeBuilder` configured with the `wcag2a` and `wcag2aa` tags.
+
+**Given** the app in its empty-list state,
+**When** the axe scan runs,
+**Then** zero violations of impact `critical` or `serious` are reported.
+
+**Given** the app in its populated state (seeded mix of active/completed todos),
+**When** the axe scan runs,
+**Then** zero `critical`/`serious` violations are reported.
+
+**Given** the app's initial-load error state (Story 3.4's retry UI),
+**When** the axe scan runs against it,
+**Then** zero `critical`/`serious` violations are reported.
+
+**Given** a Toast is visible (Story 3.2's mutation-failure toast),
+**When** the axe scan runs with the toast open,
+**Then** zero `critical`/`serious` violations are reported.
+
+**Given** axe reports violations of impact `moderate` or `minor`,
+**When** the test evaluates results,
+**Then** they are logged as test annotations but do NOT fail the test — only `critical`/`serious` findings fail it.
+
+**Given** `accessibility.spec.ts`,
+**When** run across the 3 existing browser projects (chromium, firefox, webkit),
+**Then** all pass.
+
+### Story 4.2: Keyboard-traversal and focus-order tests
+
+As a keyboard-only user,
+I want every interactive element reachable and operable via keyboard alone, with visible focus indicators,
+So that FR30, FR31, and NFR11 are verified end-to-end, not just at the component-test level.
+
+**Acceptance Criteria:**
+
+**Given** the populated list state,
+**When** a user tabs from the input through the page,
+**Then** focus order is: input → submit button → each row's checkbox → its delete button → next row, matching DOM order.
+
+**Given** a checkbox has keyboard focus,
+**When** Space is pressed,
+**Then** the todo's completed state toggles (end-to-end proof of Story 2.6's component-level behavior).
+
+**Given** a delete button has keyboard focus,
+**When** Enter is pressed,
+**Then** the item is removed (end-to-end proof of Story 2.7's behavior).
+
+**Given** the Retry button is visible (error state),
+**When** it has keyboard focus and Enter is pressed,
+**Then** a retry is triggered (end-to-end proof of Story 3.4's behavior).
+
+**Given** a Toast is visible,
+**When** the user presses Escape,
+**Then** it is dismissed via keyboard (end-to-end proof of Story 3.1's behavior).
+
+**Given** any interactive element receives keyboard focus,
+**When** inspected,
+**Then** a visible `:focus-visible` indicator is present (asserted via computed style, not just DOM focus).
+
+**Given** the full keyboard-traversal spec,
+**When** run across chromium, firefox, and webkit,
+**Then** all pass with no reliance on mouse/pointer events.
+
+### Story 4.3: Remediate any violations found
+
+As the product itself,
+I want any critical/serious WCAG violations surfaced by Stories 4.1/4.2 fixed,
+So that "zero critical WCAG violations" is actually true, not just tested-for.
+
+**Acceptance Criteria:**
+
+**Given** Stories 4.1 and 4.2's suites,
+**When** first run against the current codebase,
+**Then** any `critical`/`serious` findings are triaged and documented (violation, WCAG success criterion, affected component/file).
+
+**Given** a triaged violation,
+**When** a fix is implemented,
+**Then** it follows existing architecture patterns (Radix primitives, Tailwind, no new dependencies unless explicitly justified and documented).
+
+**Given** all triaged violations are fixed,
+**When** Stories 4.1 and 4.2's suites are re-run,
+**Then** zero `critical`/`serious` violations remain.
+
+**Given** no violations are found on the first run,
+**When** this story is reviewed,
+**Then** it is marked done as a no-op, with that finding documented in the story's completion notes.
+
+### Story 4.4: Wire Playwright e2e suite into CI
+
+As a maintainer,
+I want the Playwright e2e suite (including the new accessibility tests) to run automatically on every PR,
+So that accessibility and journey regressions are caught before merge, not just when someone remembers to run `test:e2e` locally.
+
+**Acceptance Criteria:**
+
+**Given** `.github/workflows/ci.yml`,
+**When** updated,
+**Then** a new step runs `npm run test:e2e` after the existing lint/typecheck/unit-test steps.
+
+**Given** the e2e suite needs Postgres + the API + the web app running,
+**When** CI executes this step,
+**Then** it provisions Postgres (service container or docker compose), runs migrations, and starts both apps before invoking Playwright — mirroring `scripts/dev.sh`'s sequencing.
+
+**Given** Playwright requires browser binaries,
+**When** the workflow runs,
+**Then** it includes a `playwright install --with-deps` step (cached across runs where possible).
+
+**Given** the e2e job fails,
+**When** a PR is opened,
+**Then** the PR check is marked failed, same as the existing lint/typecheck/test gates.
+
+**Given** the e2e job completes,
+**When** inspected,
+**Then** the `playwright-report` artifact is uploaded via `actions/upload-artifact` for debugging failed runs.
+
+**Given** a push to `main`,
+**When** CI runs,
+**Then** e2e tests execute identically to the PR path (no special-casing).
