@@ -2,6 +2,14 @@
 
 Items intentionally deferred from code reviews. Each entry: source review, file/area, brief rationale.
 
+## Deferred from: code review of story 4-4-wire-playwright-e2e-suite-into-ci (2026-07-05)
+
+### Story 4.4 — Wire Playwright e2e suite into CI
+
+- **No `timeout-minutes` set on the e2e step** — [.github/workflows/ci.yml:64-65](../../.github/workflows/ci.yml#L64-L65). Low-priority hardening not required by any AC; a hung dev-server bootstrap or stuck browser has no bounded failure point short of GitHub's default 6-hour job timeout.
+- **No `restore-keys` fallback on the Playwright browser cache** — [.github/workflows/ci.yml:49-54](../../.github/workflows/ci.yml#L49-L54). Low-priority; AC #3 explicitly treats caching as a "should," not a hard gate, and a version bump forcing one cold download is an acceptable cost.
+- **Cache could mismatch across GitHub's periodic `ubuntu-latest` runner-image bumps** — [.github/workflows/ci.yml:49-54](../../.github/workflows/ci.yml#L49-L54). Rare edge case; adding a runner-image version to the key is unwarranted complexity for the likelihood of impact.
+
 ## Deferred from: code review of story 3-0-1 (2026-04-30)
 
 ### Story 3.0.1 — Core Journey E2E Tests (P0-022, P0-023, P2-011)

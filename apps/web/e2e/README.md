@@ -71,6 +71,6 @@ await dedicated stories:
 - P2-001 — disclosure microcopy.
 - P2-007 — responsive viewports.
 
-CI integration (workflow, browser-binary cache, sharding, artifact upload) is
-out of scope for Story 3.0; the harness is configured for local dev and ready
-for CI integration in a future story.
+CI integration (workflow, browser-binary cache, artifact upload) shipped in
+Story 4.4 — the full suite runs on every PR and `main` push via
+`.github/workflows/ci.yml`'s `verify` job. Sharding remains out of scope.
