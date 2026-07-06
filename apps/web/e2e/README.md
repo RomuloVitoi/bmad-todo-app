@@ -41,12 +41,12 @@ and `apps/web/playwright-report/` (HTML report). Both are gitignored.
 Story 3.6 lands (e.g., `journey-3-resilience.spec.ts`). Currently:
 `xss-payload.spec.ts` (P0-013), `journey-1-happy-path.spec.ts` (P0-022),
 `journey-2-returning-session.spec.ts` (P0-023 + P2-011),
-`accessibility.spec.ts` (P1-013).
+`accessibility.spec.ts` (P1-013), `keyboard-traversal.spec.ts` (P1-014).
 
 ## Tagging convention
 
-Test titles include `@P0`, `@P1`, `@P2`, `@Security`, `@A11y` etc. so future
-runs can filter via the CLI:
+Test titles include `@P0`, `@P1`, `@P2`, `@Security`, `@A11y`, `@Keyboard`
+etc. so future runs can filter via the CLI:
 
 ```bash
 npm --workspace apps/web run test:e2e -- --grep @P0
@@ -66,7 +66,6 @@ remaining E2E scenarios from `_bmad-output/test-artifacts/test-design-architectu
 await dedicated stories:
 
 - P0-024 — Journey 3 resilience (Story 3.6 territory).
-- P1-014 — keyboard traversal (Story 4.2 territory).
 - P1-022 / P1-024 / P1-026 — toast and unhandled-rejection coverage
   (Stories 3.1 / 3.2 / 3.5).
 - P2-001 — disclosure microcopy.
