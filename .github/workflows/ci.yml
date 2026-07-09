@@ -36,6 +36,13 @@ jobs:
       - name: Create .env (shared by DB migrations, integration tests, and e2e stack)
         run: cp .env.example .env
 
+      # Next.js only loads .env* files from apps/web itself (where `next dev`
+      # runs), not the repo root — the root .env above doesn't reach it.
+      # apps/web/src/lib/api.ts throws at import time without this, which
+      # crashes the e2e suite's `next dev` webServer.
+      - name: Create apps/web/.env.local (for the e2e stack's `next dev`)
+        run: cp apps/web/.env.example apps/web/.env.local
+
       - name: Lint
         run: npm run lint
 
