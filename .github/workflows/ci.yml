@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Moved ahead of the test steps (not just before e2e): apps/api's
+      # db/client.ts throws at import time if DATABASE_URL is unset, so even
+      # the "unit, no DB required" tests need this present, not just e2e.
+      - name: Create .env (shared by DB migrations, integration tests, and e2e stack)
+        run: cp .env.example .env
+
       - name: Lint
         run: npm run lint
 
@@ -39,8 +45,14 @@ jobs:
       - name: Test (unit, no DB required)
         run: npm run test
 
-      - name: Create .env for e2e stack
-        run: cp .env.example .env
+      - name: Start Postgres
+        run: docker compose up -d --wait db
+
+      - name: Run DB migrations
+        run: npm --workspace apps/api run db:migrate
+
+      - name: Test (integration)
+        run: npm --workspace apps/api run test:integration
 
       - name: Get Playwright version
         id: playwright-version

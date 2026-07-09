@@ -84,6 +84,20 @@ describe('getTodos()', () => {
     const { getTodos } = await import('./api');
     await expect(getTodos()).rejects.toThrow();
   });
+
+  it('throws ApiError when the 200 body is malformed JSON', async () => {
+    mockFetchOnce(
+      new Response('not json {', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const { getTodos } = await import('./api');
+    await expect(getTodos()).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Malformed JSON in successful response',
+    });
+  });
 });
 
 describe('createTodo()', () => {

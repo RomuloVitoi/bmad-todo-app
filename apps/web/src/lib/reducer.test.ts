@@ -232,6 +232,16 @@ describe('reducer (optimistic mutations)', () => {
       expect(next.todos[0]!.completed).toBe(false);
     });
 
+    it('toggleFailed is a no-op (same state reference) when completed already matches previousCompleted', () => {
+      const a: TodoEntry = todo({ id: 'a', completed: false });
+      const state = successState([a]);
+      const next = reducer(state, {
+        type: 'toggleFailed',
+        payload: { id: 'a', previousCompleted: false },
+      });
+      expect(next).toBe(state);
+    });
+
     it('toggleOptimistic is a no-op when target is already at the requested value', () => {
       const a: TodoEntry = todo({ id: 'a', completed: true });
       const state = successState([a]);

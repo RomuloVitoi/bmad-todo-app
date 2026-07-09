@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TodoInput from './TodoInput';
 
@@ -111,6 +111,16 @@ describe('<TodoInput />', () => {
     render(<TodoInput onAdd={onAdd} />);
     const input = screen.getByLabelText(/add a todo/i);
     await user.type(input, '   {Enter}');
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call onAdd when the form is submitted directly with a whitespace-only value (guards submission paths the disabled button can\'t block, e.g. implicit submit on Enter in some browsers)', async () => {
+    const onAdd = vi.fn();
+    const user = userEvent.setup();
+    render(<TodoInput onAdd={onAdd} />);
+    const input = screen.getByLabelText(/add a todo/i);
+    await user.type(input, '   ');
+    fireEvent.submit(screen.getByTestId('todo-input'));
     expect(onAdd).not.toHaveBeenCalled();
   });
 
