@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc",
     "prepare": "tsc",
-    "test": "tsc && node --test dist/contracts.test.js"
+    "test": "tsc && node --experimental-test-coverage --test dist/contracts.test.js"
   },
   "dependencies": {
     "zod": "^3.23.0"

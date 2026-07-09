@@ -8,8 +8,8 @@
     "build:ts": "tsc",
     "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/server.ts",
     "start": "npm run build:ts && node --env-file-if-exists=../../.env dist/server.js",
-    "test": "node --env-file-if-exists=../../.env --import tsx --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
-    "test:unit": "node --env-file-if-exists=../../.env --import tsx --test \"src/**/*.test.ts\"",
+    "test": "node --env-file-if-exists=../../.env --import tsx --test --experimental-test-coverage \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "test:unit": "node --env-file-if-exists=../../.env --import tsx --test --experimental-test-coverage \"src/**/*.test.ts\"",
     "test:integration": "node --env-file-if-exists=../../.env --import tsx --test --test-concurrency=1 \"test/integration/**/*.int.test.ts\"",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "node --env-file-if-exists=../../.env --import tsx src/db/migrate.ts"
