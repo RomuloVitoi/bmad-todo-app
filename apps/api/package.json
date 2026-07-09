@@ -27,7 +27,7 @@
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.6",
     "@todo-app/shared": "*",
-    "drizzle-orm": "^0.40.0",
+    "drizzle-orm": "^0.45.2",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
     "fastify-type-provider-zod": "^4.0.2",
