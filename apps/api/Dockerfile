@@ -90,3 +90,17 @@ EXPOSE 4000
 # /app/apps/api/dist/db/migrate.js → ../../../drizzle → /app/apps/api/drizzle ✓
 WORKDIR /app/apps/api
 CMD ["node", "dist/server.js"]
+
+# ===========================================================
+# Stage 4: migrator — one-shot `drizzle-kit migrate` runner
+# ===========================================================
+# Branches off `deps` (not `builder`) because `builder` prunes devDependencies
+# (drizzle-kit included) before producing the runtime image. `deps` still has
+# the full node_modules tree, so this stage costs no extra install step.
+FROM deps AS migrator
+WORKDIR /app/apps/api
+
+COPY apps/api/drizzle drizzle
+COPY apps/api/drizzle.config.ts drizzle.config.ts
+
+CMD ["npx", "drizzle-kit", "migrate"]

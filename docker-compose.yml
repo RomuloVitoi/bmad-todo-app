@@ -1,3 +1,15 @@
+# docker-compose.yml — Full stack: db + migrate + api + web.
+#
+# `docker compose up --build` brings up everything needed to use the app at
+# http://localhost:3000, with no native `npm install` / `npm run dev` required.
+#
+# For the fast local dev loop (hot-reload web/api on the host, Postgres only
+# in Docker), use `npm run dev` instead — it runs `docker compose up -d --wait db`
+# under the hood (see scripts/dev.sh) and leaves `api`/`web` untouched here.
+#
+# Env vars are read from `.env` (see .env.example). Override any of them
+# (e.g. CORS_ORIGIN, NEXT_PUBLIC_API_URL, PORT_WEB) for a non-local deployment.
+
 services:
   db:
     image: postgres:17-alpine
@@ -17,6 +29,68 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # One-shot: applies Drizzle migrations, then exits 0. `api` waits on its
+  # success. Re-running on an already-migrated DB is a no-op.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrator
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    container_name: todo-app-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: ${NODE_ENV:-development}
+      ENABLE_DOCS: ${ENABLE_DOCS:-false}
+    ports:
+      - "${PORT_API:-4000}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Browser-facing URL baked in at build time — must be reachable from
+        # the host (not the internal `api` hostname), since apps/web calls
+        # the API directly from client-side code.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    container_name: todo-app-web
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${PORT_WEB:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   todo-app-db-data:
